@@ -56,13 +56,6 @@ export const IconRefund = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M3 6h7a3 3 0 0 1 0 6H6M3 6l3-3M3 6l3 3" /></svg>
 );
 
-export function Mark({ size = 24, mono = false }: { size?: number; mono?: boolean }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden focusable={false}>
-      <rect width="32" height="32" rx="6" fill={mono ? "currentColor" : "#F8E7C9"} opacity={mono ? 0.12 : 1} />
-      <path d="M5 22h4v-4h4v-4h3v8" fill="none" stroke={mono ? "currentColor" : "#064E3B"} strokeWidth="2.5" />
-      <path d="M27 22h-4v-4h-4v-4h-3" fill="none" stroke={mono ? "currentColor" : "#D9654F"} strokeWidth="2.5" />
-      <path d="M3 16h26" stroke={mono ? "currentColor" : "#10251E"} strokeWidth="2" />
-    </svg>
-  );
+export function Mark({ size = 24 }: { size?: number }) {
+  return <img src="/cleara-logo.png" width={size} height={size} alt="" aria-hidden className="block shrink-0" />;
 }
