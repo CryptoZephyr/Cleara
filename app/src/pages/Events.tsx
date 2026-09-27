@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { CONFIG } from "../../shared/config";
 import { SCENARIOS, type ScenarioId } from "../../shared/scenarios";
-import { phaseOf, type Phase } from "../lib/chain";
+import { isLegacy, phaseOf, type Phase } from "../lib/chain";
 import { useStore } from "../lib/store";
 import { requestDemoEvent } from "../lib/api";
 import { Page } from "../components/Shell";
@@ -25,6 +25,7 @@ export default function Events() {
   const { auctions, error, now, refresh, loading } = useStore();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const list = (auctions ?? [])
+    .filter((a) => !isLegacy(a))
     .map((a) => ({ a, p: phaseOf(a, now) }))
     .filter((x) => matches(filter, x.p))
     .sort((x, y) => phaseSortKey(x.p) - phaseSortKey(y.p) || x.a.deadline - y.a.deadline);

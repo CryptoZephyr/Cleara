@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { CONFIG } from "../../shared/config";
 import { MAX_ORDERS, SIDE_BUY, SIDE_EMPTY, SIDE_SELL, clear, quoteCeil, type Clearing } from "../../shared/cleara";
-import { activeOrders, explorerAddr, phaseOf, type AuctionView, type Phase } from "../lib/chain";
+import { activeOrders, explorerAddr, phaseOf, quoteSym, type AuctionView, type Phase } from "../lib/chain";
 import { isValid, useAttestations } from "../lib/attest";
 import { alias, countdown, dateTime, eventLabel, fmtBase, fmtPrice, fmtQuote, pair } from "../lib/format";
 import { DepthChart } from "./DepthChart";
@@ -58,7 +58,7 @@ export function EventCard({ a, now, featured }: { a: AuctionView; now: number; f
           <Stat label="Funded sell interest" value={`${fmtBase(a, d.sellQty)} ${sym}`} />
           <Stat
             label={a.status === 1 ? "Clearing price" : phase === "expired" ? "Result" : "Provisional price"}
-            value={phase === "expired" ? "Nothing traded" : c.volume > 0n ? `${fmtPrice(a, c.price)} ${CONFIG.quoteSymbol}` : "No overlap"}
+            value={phase === "expired" ? "Nothing traded" : c.volume > 0n ? `${fmtPrice(a, c.price)} ${quoteSym(a)}` : "No overlap"}
           />
           <Stat label="Orders · participants" value={`${d.count} of ${MAX_ORDERS} · ${a.roster.length}`} />
         </div>
@@ -68,7 +68,7 @@ export function EventCard({ a, now, featured }: { a: AuctionView; now: number; f
             clearing={c}
             baseDecimals={a.baseDecimals}
             quoteDecimals={a.quoteDecimals}
-            quoteSymbol={CONFIG.quoteSymbol}
+            quoteSymbol={quoteSym(a)}
             baseSymbol={sym}
             height={220}
           />
@@ -104,7 +104,7 @@ export function OrderBook({ a, me, clearing, onCancel, canCancel }: { a: Auction
               <th scope="col">Slot</th>
               <th scope="col">Side</th>
               <th scope="col">Participant</th>
-              <th scope="col" className="text-right">Limit ({CONFIG.quoteSymbol})</th>
+              <th scope="col" className="text-right">Limit ({quoteSym(a)})</th>
               <th scope="col" className="text-right">Quantity ({sym})</th>
               <th scope="col" className="text-right">{settled || expired ? "Filled" : "Fill if closed now"}</th>
               <th scope="col">Status</th>
@@ -161,7 +161,7 @@ export function ProvisionalClearing({ a, clearing, now }: { a: AuctionView; clea
       <Window title="Final clearing result" active lamp={<span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-champagne bg-mint" aria-hidden />}>
         {a.clearedVolume > 0n ? (
           <div className="flex flex-col gap-3">
-            <Stat big label="Clearing price" value={`${fmtPrice(a, a.clearingPrice)} ${CONFIG.quoteSymbol}`} sub={`per ${sym} · every matched order traded at this one price`} />
+            <Stat big label="Clearing price" value={`${fmtPrice(a, a.clearingPrice)} ${quoteSym(a)}`} sub={`per ${sym} · every matched order traded at this one price`} />
             <Stat label="Matched volume" value={`${fmtBase(a, a.clearedVolume)} ${sym}`} />
           </div>
         ) : (
@@ -181,7 +181,7 @@ export function ProvisionalClearing({ a, clearing, now }: { a: AuctionView; clea
     <Window title="Provisional clearing price" active lamp={<span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-champagne bg-amber" aria-hidden />}>
       {clearing.volume > 0n ? (
         <div className="flex flex-col gap-3">
-          <Stat big label={pastDeadline ? "Result if settled now" : "If the event closed now"} value={`${fmtPrice(a, clearing.price)} ${CONFIG.quoteSymbol}`} sub={`per ${sym}`} />
+          <Stat big label={pastDeadline ? "Result if settled now" : "If the event closed now"} value={`${fmtPrice(a, clearing.price)} ${quoteSym(a)}`} sub={`per ${sym}`} />
           <div className="grid grid-cols-2 gap-3">
             <Stat label="Executable volume" value={`${fmtBase(a, clearing.volume)} ${sym}`} />
             <Stat label="Overlapping orders" value={`${overlapping} of ${funded} funded`} />
@@ -298,10 +298,10 @@ export function Allocation({ a, me }: { a: AuctionView; me: string | null }) {
                 <td className="mono text-right">{fmtBase(a, o.qty)}</td>
                 <td className="mono text-right">{fmtBase(a, r.filled)}</td>
                 <td className="mono text-right">
-                  {o.side === SIDE_BUY ? `paid ${fmtQuote(a, r.paid)}` : `got ${fmtQuote(a, r.received)}`} {CONFIG.quoteSymbol}
+                  {o.side === SIDE_BUY ? `paid ${fmtQuote(a, r.paid)}` : `got ${fmtQuote(a, r.received)}`} {quoteSym(a)}
                 </td>
                 <td className="mono text-right">
-                  {o.side === SIDE_BUY ? `${fmtQuote(a, r.refundQuote)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, r.refundBase)} ${sym}`}
+                  {o.side === SIDE_BUY ? `${fmtQuote(a, r.refundQuote)} ${quoteSym(a)}` : `${fmtBase(a, r.refundBase)} ${sym}`}
                 </td>
               </tr>
             );

@@ -19,8 +19,8 @@ async function main() {
   const cfg = JSON.parse(readFileSync(CFG_PATH, "utf8"));
   writeFileSync(CFG_PATH, JSON.stringify({ ...cfg, sas }, null, 2) + "\n");
   for (let i = 0; i < 4; i++) {
-    const ix = await attestIx(conn, op, botKeypair(op, i).publicKey);
-    if (ix) console.log("attested bot", i, await send(conn, op, [ix]));
+    const ixs = await attestIx(conn, op, botKeypair(op, i).publicKey);
+    if (ixs.length) console.log("attested bot", i, await send(conn, op, ixs));
   }
   console.log(sas);
 }

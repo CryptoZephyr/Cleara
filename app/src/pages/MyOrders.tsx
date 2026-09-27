@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useState } from "react";
-import { CONFIG } from "../../shared/config";
 import { SIDE_BUY, SIDE_EMPTY } from "../../shared/cleara";
-import { phaseOf, type AuctionView, type Phase } from "../lib/chain";
+import { phaseOf, quoteSym, type AuctionView, type Phase } from "../lib/chain";
 import { useStore } from "../lib/store";
 import { eventLabel, fmtBase, fmtPrice, fmtQuote, pair } from "../lib/format";
 import { Page } from "../components/Shell";
@@ -87,8 +86,8 @@ function Row({ a, slot, p }: { a: AuctionView; slot: number; p: Phase }) {
   const o = a.orders[slot];
   const sym = a.asset?.symbol ?? "";
   const r = p === "settled" ? personalResult(a, slot) : null;
-  const escrow = o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${CONFIG.quoteSymbol} locked` : `${fmtBase(a, o.escrowed)} ${sym} locked`;
-  const result = r ? (o.side === SIDE_BUY ? `Paid ${fmtQuote(a, r.paid)}, returned ${fmtQuote(a, r.refundQuote)} ${CONFIG.quoteSymbol}` : `Got ${fmtQuote(a, r.received)} ${CONFIG.quoteSymbol}, returned ${fmtBase(a, r.refundBase)} ${sym}`) : escrow;
+  const escrow = o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${quoteSym(a)} locked` : `${fmtBase(a, o.escrowed)} ${sym} locked`;
+  const result = r ? (o.side === SIDE_BUY ? `Paid ${fmtQuote(a, r.paid)}, returned ${fmtQuote(a, r.refundQuote)} ${quoteSym(a)}` : `Got ${fmtQuote(a, r.received)} ${quoteSym(a)}, returned ${fmtBase(a, r.refundBase)} ${sym}`) : escrow;
   return (
     <tr>
       <td className="font-semibold">{eventLabel(a)} · {pair(a)}</td>

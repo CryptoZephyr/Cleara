@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { CONFIG } from "../../shared/config";
 import { SIDE_BUY } from "../../shared/cleara";
-import { activeOrders, explainError, explorerAddr, explorerTx, latestSignature, phaseOf, refundIxs, sendIxs, settleIxs, type AuctionView } from "../lib/chain";
+import { activeOrders, explainError, explorerAddr, explorerTx, latestSignature, phaseOf, quoteSym, refundIxs, sendIxs, settleIxs, type AuctionView } from "../lib/chain";
 import { dateTime, fmtBase, fmtPrice, fmtQuote } from "../lib/format";
 import { IconExternal } from "./icons";
 import { Allocation, personalResult } from "./EventParts";
@@ -78,7 +77,7 @@ export function SettlementResult({ a, me }: { a: AuctionView; me: string | null 
           <div>
             <p className="m-0 label text-muted">Clearing price</p>
             <p className="m-0 mono text-[30px] leading-[34px]">{a.clearedVolume > 0n ? fmtPrice(a, a.clearingPrice) : "—"}</p>
-            <p className="m-0 text-[13px] text-muted">{CONFIG.quoteSymbol} per {sym}</p>
+            <p className="m-0 text-[13px] text-muted">{quoteSym(a)} per {sym}</p>
           </div>
           <div>
             <p className="m-0 label text-muted">Matched volume</p>
@@ -116,13 +115,13 @@ export function SettlementResult({ a, me }: { a: AuctionView; me: string | null 
               <dt className="text-muted">Filled</dt><dd className="m-0 mono">{fmtBase(a, r.filled)} {sym}</dd>
               {o.side === SIDE_BUY ? (
                 <>
-                  <dt className="text-muted">Paid</dt><dd className="m-0 mono">{fmtQuote(a, r.paid)} {CONFIG.quoteSymbol}</dd>
-                  <dt className="text-muted">Returned</dt><dd className="m-0 mono">{fmtQuote(a, r.refundQuote)} {CONFIG.quoteSymbol}</dd>
+                  <dt className="text-muted">Paid</dt><dd className="m-0 mono">{fmtQuote(a, r.paid)} {quoteSym(a)}</dd>
+                  <dt className="text-muted">Returned</dt><dd className="m-0 mono">{fmtQuote(a, r.refundQuote)} {quoteSym(a)}</dd>
                 </>
               ) : (
                 <>
-                  <dt className="text-muted">Received</dt><dd className="m-0 mono">{fmtQuote(a, r.received)} {CONFIG.quoteSymbol}</dd>
-                  <dt className="text-muted">Fee</dt><dd className="m-0 mono">{fmtQuote(a, r.fee)} {CONFIG.quoteSymbol}</dd>
+                  <dt className="text-muted">Received</dt><dd className="m-0 mono">{fmtQuote(a, r.received)} {quoteSym(a)}</dd>
+                  <dt className="text-muted">Fee</dt><dd className="m-0 mono">{fmtQuote(a, r.fee)} {quoteSym(a)}</dd>
                   <dt className="text-muted">Returned</dt><dd className="m-0 mono">{fmtBase(a, r.refundBase)} {sym}</dd>
                 </>
               )}
@@ -156,7 +155,7 @@ export function RefundPanel({ a, me, now, onDone, onConnect }: { a: AuctionView;
                 <SideTag side={o.side} />
                 <span className="mono text-[13px]">#{o.slot + 1}</span>
                 <span className="text-[13px]">{o.owner === me ? "You" : `Owner ${o.owner.slice(0, 4)}…`}</span>
-                <span className="mono ml-auto text-[13px]">{o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, o.escrowed)} ${sym}`}</span>
+                <span className="mono ml-auto text-[13px]">{o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${quoteSym(a)}` : `${fmtBase(a, o.escrowed)} ${sym}`}</span>
                 {connected ? (
                   <button type="button" className="btn btn-secondary btn-sm" disabled={!expired || act.kind === "busy"} onClick={() => run(`Refund of order #${o.slot + 1}`, () => refundIxs(a, o.slot), onDone)}>
                     Refund to owner

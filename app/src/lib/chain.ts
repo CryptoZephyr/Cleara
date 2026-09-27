@@ -117,11 +117,14 @@ export const decodeAuction = (address: string, data: Buffer) => toView(address, 
 
 const operatorFilter = [{ memcmp: { offset: 8, bytes: CONFIG.operator } }];
 
+/** Events priced in a retired quote mint (the old synthetic dUSDC); kept for My orders and refunds. */
+export const isLegacy = (a: AuctionView) => a.quoteMint !== CONFIG.quoteMint;
+export const quoteSym = (a: AuctionView) => (isLegacy(a) ? "dUSDC" : CONFIG.quoteSymbol);
+
 export async function fetchAuctions(): Promise<AuctionView[]> {
   const accounts = await connection.getProgramAccounts(PROGRAM_ID, { commitment: "confirmed", filters: operatorFilter });
   return accounts
     .map(({ pubkey, account }) => decodeAuction(pubkey.toBase58(), account.data))
-    .filter((a) => a.quoteMint === CONFIG.quoteMint)
     .sort((x, y) => Number(y.id - x.id));
 }
 
@@ -138,7 +141,7 @@ export function watchAuctions(onChange: (a: AuctionView) => void): () => void {
     ({ accountId, accountInfo }) => {
       try {
         const a = decodeAuction(accountId.toBase58(), accountInfo.data);
-        if (a.quoteMint === CONFIG.quoteMint) onChange(a);
+        onChange(a);
       } catch {
         return;
       }

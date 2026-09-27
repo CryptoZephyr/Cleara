@@ -3,12 +3,13 @@ import { AccountRole, address, createNoopSigner, type Instruction } from "@solan
 import {
   deriveCredentialPda,
   deriveSchemaPda,
+  getCloseAttestationInstruction,
   getCreateAttestationInstruction,
   getCreateCredentialInstruction,
   getCreateSchemaInstruction,
 } from "sas-lib";
 import { CONFIG } from "../shared/config";
-import { SAS_CREDENTIAL_NAME, SAS_SCHEMA_NAME, SAS_SCHEMA_VERSION, attestationPda, encodeApproval } from "../shared/sas";
+import { SAS_CREDENTIAL_NAME, SAS_SCHEMA_NAME, SAS_SCHEMA_VERSION, attestationPda, decodeAttestation, encodeApproval } from "../shared/sas";
 
 const ATTESTATION_DAYS = 30;
 
@@ -55,15 +56,21 @@ export async function setupIxs(operator: Keypair) {
   };
 }
 
-/** Returns an instruction attesting `wallet` as an approved participant, or null if a live attestation already exists. */
-export async function attestIx(conn: Connection, operator: Keypair, wallet: PublicKey): Promise<TransactionInstruction | null> {
-  if (!CONFIG.sas) return null;
+/** Instructions attesting `wallet` as an approved participant: none if a live attestation exists, close + recreate if it has expired. */
+export async function attestIx(conn: Connection, operator: Keypair, wallet: PublicKey): Promise<TransactionInstruction[]> {
+  if (!CONFIG.sas) return [];
   const credential = new PublicKey(CONFIG.sas.credential);
   const schema = new PublicKey(CONFIG.sas.schema);
   const pda = attestationPda(credential, schema, wallet);
-  if (await conn.getAccountInfo(pda, "confirmed")) return null;
   const signer = createNoopSigner(address(operator.publicKey.toBase58()));
-  return toWeb3(
+  const out: TransactionInstruction[] = [];
+  const existing = await conn.getAccountInfo(pda, "confirmed");
+  if (existing) {
+    const att = decodeAttestation(pda.toBase58(), existing.data);
+    if (att && att.expiry > Math.floor(Date.now() / 1000) + 3600) return [];
+    out.push(toWeb3(getCloseAttestationInstruction({ payer: signer, authority: signer, credential: address(credential.toBase58()), attestation: address(pda.toBase58()) })));
+  }
+  out.push(toWeb3(
     getCreateAttestationInstruction({
       payer: signer,
       authority: signer,
@@ -74,5 +81,6 @@ export async function attestIx(conn: Connection, operator: Keypair, wallet: Publ
       data: encodeApproval("approved", "cleara-devnet-demo"),
       expiry: BigInt(Math.floor(Date.now() / 1000) + ATTESTATION_DAYS * 86400),
     })
-  );
+  ));
+  return out;
 }
