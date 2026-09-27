@@ -10,12 +10,13 @@ interface Props {
   height?: number;
   compact?: boolean;
   title?: string;
+  animatePoint?: boolean;
 }
 
 const W = 600;
 
 /** Stepped demand (bids, descending) and supply (asks, ascending) curves from the same order book shown elsewhere. */
-export function DepthChart({ orders, clearing, baseDecimals, quoteDecimals, quoteSymbol, baseSymbol, height = 280, compact, title }: Props) {
+export function DepthChart({ orders, clearing, baseDecimals, quoteDecimals, quoteSymbol, baseSymbol, height = 280, compact, title, animatePoint }: Props) {
   const H = height;
   const pad = { l: compact ? 44 : 64, r: 16, t: 16, b: compact ? 28 : 40 };
   const buys = orders.filter((o) => o.side === SIDE_BUY).sort((a, b) => (b.limitPrice > a.limitPrice ? 1 : -1));
@@ -104,7 +105,7 @@ export function DepthChart({ orders, clearing, baseDecimals, quoteDecimals, quot
         {sells.length > 0 && <path className="chart-line" d={steps(sells, hi)} fill="none" stroke="#10251E" strokeWidth="5" />}
         {sells.length > 0 && <path className="chart-line" d={steps(sells, hi)} fill="none" stroke="#D9654F" strokeWidth="3" />}
         {hasCross && (
-          <g>
+          <g className={animatePoint ? "point-in" : undefined}>
             <line x1={cx} x2={cx} y1={pad.t} y2={H - pad.b} stroke="#D5A62E" strokeWidth="3" />
             <line x1={pad.l} x2={W - pad.r} y1={cy} y2={cy} stroke="#D5A62E" strokeWidth="1.5" strokeDasharray="6 4" />
             <rect x={cx - 6} y={cy - 6} width="12" height="12" fill="#D5A62E" stroke="#10251E" strokeWidth="2" />

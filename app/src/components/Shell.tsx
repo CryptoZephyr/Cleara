@@ -11,6 +11,7 @@ const NAV = [
   { to: "/#how", label: "How it works" },
   { to: "/#faq", label: "FAQ" },
   { to: "/developers", label: "Developers" },
+  { to: "/#about", label: "About" },
 ];
 
 function NavItem({ to, label, onClick }: { to: string; label: string; onClick?: () => void }) {

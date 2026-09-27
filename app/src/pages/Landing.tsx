@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CONFIG } from "../../shared/config";
-import { SIDE_EMPTY, clear, formatAtoms, parseAtoms, type BookOrder } from "../../shared/cleara";
+import { SIDE_BUY, SIDE_EMPTY, SIDE_SELL, clear, formatAtoms, parseAtoms, type BookOrder } from "../../shared/cleara";
 import { SCENARIOS, type ScenarioId } from "../../shared/scenarios";
 import { DepthChart } from "../components/DepthChart";
 import { SideTag, Window } from "../components/ui";
@@ -30,31 +30,88 @@ const PREVIEW: { id: ScenarioId | "recovery"; title: string; body: string }[] = 
   { id: "recovery", title: "Recovery after expiry", body: "If nobody settles before the settlement deadline, anyone can return each order's escrow to its owner, subject to the token's transfer rules." },
 ];
 
+const HERO_ASSET = CONFIG.assets.find((x) => x.symbol === "NRTH");
+
+function HeroOrders({ side, book, fills }: { side: typeof SIDE_BUY | typeof SIDE_SELL; book: BookOrder[]; fills: bigint[] }) {
+  const rows = book
+    .filter((o) => o.side === side)
+    .sort((x, y) => (side === SIDE_BUY ? (y.limitPrice > x.limitPrice ? 1 : -1) : x.limitPrice > y.limitPrice ? 1 : -1));
+  return (
+    <Window title={side === SIDE_BUY ? "Funded buy orders" : "Funded sell orders"} active bodyClass="p-0">
+      <table className="table text-[13px]">
+        <thead><tr><th scope="col">Side</th><th scope="col" className="text-right">Limit</th><th scope="col" className="text-right">Qty</th><th scope="col" className="text-right">Fill</th></tr></thead>
+        <tbody>
+          {rows.map((o) => (
+            <tr key={o.slot}>
+              <td><SideTag side={o.side} /></td>
+              <td className="mono text-right">{formatAtoms(o.limitPrice, DEC, 2)}</td>
+              <td className="mono text-right">{formatAtoms(o.qty, DEC, 0)}</td>
+              <td className="mono text-right">{formatAtoms(fills[o.slot], DEC, 0)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Window>
+  );
+}
+
 function HeroVisual() {
   const book = scenarioBook("crossing");
   const c = clear(book);
+  const overlapping = book.filter((o) => o.side !== SIDE_EMPTY && c.fills[o.slot] > 0n).length;
+  const funded = book.filter((o) => o.side !== SIDE_EMPTY).length;
   return (
-    <Window title="EVENT NRTH-DEMO · NRTH / dUSDC" active right={<span className="label">Synthetic example</span>} bodyClass="p-0">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2 text-[13px]">
-        <span className="inline-flex items-center gap-1.5 rounded-[3px] bg-devnet px-2 py-0.5 label text-cream">Devnet</span>
-        <span className="mono">Deadline Fri 16:00 UTC · illustrative</span>
+    <div className="grid grid-cols-12 gap-y-4" aria-label="Synthetic example of one clearing event">
+      <div className="relative z-0 col-span-8 row-span-2 max-md:col-span-12">
+        <Window title="Clearing event · NRTH / dUSDC" active right={<span className="label">Synthetic example</span>} bodyClass="p-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2 text-[13px]">
+            <span className="font-semibold">{HERO_ASSET?.name ?? "Northwind Robotics Series B (synthetic)"}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-[3px] bg-devnet px-2 py-0.5 label text-cream">Devnet</span>
+          </div>
+          <p className="m-0 border-b border-line px-4 py-2 mono text-[13px]">Order deadline Fri 16:00 UTC · illustrative</p>
+          <div className="p-4 pb-3">
+            <DepthChart orders={book} clearing={c} baseDecimals={DEC} quoteDecimals={DEC} quoteSymbol="dUSDC" baseSymbol="NRTH" height={190} compact animatePoint title="Synthetic example: stepped buy demand and sell supply crossing at one clearing price" />
+          </div>
+          <div className="grid grid-cols-2 border-t-2 border-emerald">
+            <div className="border-r-2 border-emerald p-4 max-sm:p-3">
+              <p className="m-0 label text-muted">Provisional clearing price</p>
+              <p className="m-0 mono text-[26px] leading-[32px]">{formatAtoms(c.price, DEC, 4)}</p>
+              <p className="m-0 text-[12px] text-muted">dUSDC per NRTH · may change until the deadline</p>
+            </div>
+            <div className="p-4 max-sm:p-3">
+              <p className="m-0 label text-muted">Executable quantity</p>
+              <p className="m-0 mono text-[26px] leading-[32px]">{formatAtoms(c.volume, DEC, 0)}</p>
+              <p className="m-0 text-[12px] text-muted">NRTH from {funded} funded orders</p>
+            </div>
+          </div>
+        </Window>
       </div>
-      <div className="p-4">
-        <DepthChart orders={book} clearing={c} baseDecimals={DEC} quoteDecimals={DEC} quoteSymbol="dUSDC" baseSymbol="NRTH" height={240} title="Synthetic example: stepped demand and supply curves crossing at one price" />
+      <div className="relative z-10 col-span-4 -ml-6 mt-10 max-md:hidden">
+        <HeroOrders side={SIDE_BUY} book={book} fills={c.fills} />
       </div>
-      <div className="grid grid-cols-2 border-t-2 border-emerald">
-        <div className="border-r-2 border-emerald p-4">
-          <p className="m-0 label text-muted">Provisional clearing price</p>
-          <p className="m-0 mono text-[26px] leading-[32px]">{formatAtoms(c.price, DEC, 4)}</p>
-          <p className="m-0 text-[12px] text-muted">dUSDC per NRTH · may change until the deadline</p>
-        </div>
-        <div className="p-4">
-          <p className="m-0 label text-muted">Executable quantity</p>
-          <p className="m-0 mono text-[26px] leading-[32px]">{formatAtoms(c.volume, DEC, 2)}</p>
-          <p className="m-0 text-[12px] text-muted">NRTH from 4 funded orders</p>
-        </div>
+      <div className="relative z-10 col-span-4 -ml-6 max-md:hidden">
+        <HeroOrders side={SIDE_SELL} book={book} fills={c.fills} />
       </div>
-    </Window>
+      <div className="relative z-20 col-span-7 col-start-3 -mt-8 max-lg:-mt-4 max-md:col-span-12 max-md:col-start-1 max-md:mt-0">
+        <Window title="Event status" active right={<span className="label">Illustrative</span>} bodyClass="p-0">
+          <dl className="m-0 grid grid-cols-2 text-[13px]">
+            <div className="border-b border-r border-line px-4 py-2"><dt className="label text-muted">Closes in</dt><dd className="m-0 mono text-[15px]">2d 04h 12m</dd></div>
+            <div className="border-b border-line px-4 py-2"><dt className="label text-muted">Overlapping orders</dt><dd className="m-0 mono text-[15px]">{overlapping} of {funded}</dd></div>
+            <div className="border-r border-line px-4 py-2"><dt className="label text-muted">Provisional price</dt><dd className="m-0 mono text-[15px]">{formatAtoms(c.price, DEC, 4)} dUSDC</dd></div>
+            <div className="px-4 py-2"><dt className="label text-muted">Settlement</dt><dd className="m-0">After the deadline, one all-or-nothing transaction</dd></div>
+          </dl>
+        </Window>
+      </div>
+    </div>
+  );
+}
+
+function PaperLandscape() {
+  return (
+    <svg aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full text-emerald opacity-[0.12] max-md:hidden" viewBox="0 0 1440 96" preserveAspectRatio="none" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M0 70 C 160 40 300 40 460 62 S 760 88 920 58 S 1240 30 1440 56" />
+      <path d="M0 86 C 200 66 380 70 560 82 S 900 96 1100 76 S 1340 66 1440 74" />
+    </svg>
   );
 }
 
@@ -114,22 +171,20 @@ const FAQ: [string, string][] = [
 export default function Landing() {
   return (
     <>
-      <section className="border-b-2 border-emerald bg-champagne">
-        <div className="mx-auto grid max-w-[1344px] grid-cols-12 gap-8 px-8 py-16 max-lg:py-10 max-md:px-4">
-          <div className="col-span-6 flex flex-col justify-center gap-5 max-lg:col-span-12">
+      <section className="paper-grain relative overflow-hidden border-b-2 border-emerald bg-champagne">
+        <div className="relative z-10 mx-auto grid min-h-[calc(100svh-60px)] max-w-[1344px] grid-cols-12 items-center gap-8 px-8 py-12 max-lg:min-h-0 max-md:px-4 max-md:py-10">
+          <div className="col-span-5 flex flex-col gap-5 max-lg:col-span-12">
             <p className="m-0 label text-devnet">Synthetic assets · Solana Devnet</p>
-            <h1 className="m-0 text-[56px] leading-[60px] font-[650] tracking-[-0.03em] max-sm:text-[40px] max-sm:leading-[44px]">A clear moment to exit.</h1>
-            <p className="m-0 max-w-[48ch] text-[19px] leading-[28px] text-muted">Scheduled liquidity events for hard-to-sell tokenized assets.</p>
-            <p className="m-0 max-w-[56ch]">
-              Cleara brings funded buy and sell orders for one asset into a single event with one deadline, applies published rules, and shows exactly what cleared, what did not, and what is refundable.
-            </p>
-            <div className="flex flex-wrap gap-3">
+            <h1 className="m-0 text-[72px] leading-[74px] font-[650] tracking-[-0.03em] max-xl:text-[64px] max-xl:leading-[66px] max-sm:text-[44px] max-sm:leading-[48px]">A clear moment to exit.</h1>
+            <p className="m-0 max-w-[40ch] text-[20px] leading-[28px] text-muted">Scheduled liquidity events for hard-to-sell tokenized assets.</p>
+            <div className="flex flex-wrap gap-3 max-sm:flex-col max-sm:items-stretch">
               <Link to="/events" className="btn btn-primary">Explore events</Link>
               <Link to="/#how" className="btn btn-secondary">How clearing works</Link>
             </div>
           </div>
-          <div className="col-span-6 max-lg:col-span-12"><HeroVisual /></div>
+          <div className="col-span-7 max-lg:col-span-12"><HeroVisual /></div>
         </div>
+        <PaperLandscape />
       </section>
 
       <main className="mx-auto flex max-w-[1344px] flex-col gap-20 px-8 py-16 max-md:gap-12 max-md:px-4 max-md:py-10">

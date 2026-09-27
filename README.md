@@ -6,6 +6,8 @@ Live demo (Solana Devnet, synthetic assets): **https://cleara-ten.vercel.app**
 
 > Hackathon prototype for the Colosseum Crypto World's Fair. Devnet only: the assets are synthetic and have no real value.
 
+![Cleara landing hero: one clearing event with funded buy and sell orders](docs/images/landing-hero.png)
+
 ![Settled event with a single clearing price and per-order receipts](docs/images/settlement.png)
 
 ## The problem
