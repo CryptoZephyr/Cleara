@@ -1,0 +1,61 @@
+{
+  "cluster": "devnet",
+  "rpc": "https://api.devnet.solana.com",
+  "programId": "AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W",
+  "operator": "27Mhf2aJxxPszER3Nthj91w2cyzNRmGM7oTHW5dgG9AH",
+  "quoteMint": "Fk454Hd66rMQ2kRtNsCRF3m6XKZgGy8d8RWPvvVaDrCX",
+  "quoteSymbol": "dUSDC",
+  "quoteDecimals": 6,
+  "feeAccount": "DsvhhZ8FFE5Ag4LxHEwhh23zHdmJj6kmNAyAurgZ3evc",
+  "usdcMainnet": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "assets": [
+    {
+      "mint": "HFHZDubMuKFJ1Q1WEtF7GoxNjgA2WfsnXErfVdhMmUiC",
+      "symbol": "NRTH",
+      "name": "Northwind Robotics Series B (synthetic)",
+      "kind": "Private-company share token",
+      "description": "Fictional late-stage robotics company. Holders want an exit before any IPO.",
+      "decimals": 6,
+      "reference": {
+        "symbol": "SPCXx",
+        "name": "SpaceX xStock",
+        "mint": "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+        "decimals": 8
+      }
+    },
+    {
+      "mint": "Cp12dQeWgNRuUbDXHnkW1rRx5DeCrN2ykr3epiXtNda7",
+      "symbol": "HLCN",
+      "name": "Halcyon Solar Credit Note (synthetic)",
+      "kind": "Private credit note",
+      "description": "Fictional solar-project credit note with quarterly coupons and a small holder base.",
+      "decimals": 6,
+      "reference": {
+        "symbol": "VIDAx",
+        "name": "Vida Global xStock",
+        "mint": "XsfCC9VL4DamVGNgdJpfLXB3sBVa158Gbx8sh7NzmTk",
+        "decimals": 8
+      }
+    },
+    {
+      "mint": "GR9xzAkoqQ9YcAqGbqEBNYwoCkcuQ4F7LyJsKUEvpnBP",
+      "symbol": "ORCH",
+      "name": "Orchard Lane Residences (synthetic)",
+      "kind": "Real-estate fund unit",
+      "description": "Fictional residential real-estate fund. Units rarely trade between redemption windows.",
+      "decimals": 6,
+      "reference": {
+        "symbol": "CRCLx",
+        "name": "Circle xStock",
+        "mint": "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+        "decimals": 8
+      }
+    }
+  ],
+  "bots": [
+    "6BxXYbmdMr1yrnbWpbw38Aw7teR9rP2DKia2iHeBf8eJ",
+    "4jdSDu4cTQChAWCxzkdeAt8QV7cJGrK1v8R1qqjHa4Bb",
+    "CpmMwvNrsbhU6FV8ASn5fGhyB63QMuJcvyvRyh8twZ8U",
+    "6wXhfszjrSLvX9yjuvqJtfGMtLpfhP6vgT3pmjC49ZmB"
+  ]
+}
