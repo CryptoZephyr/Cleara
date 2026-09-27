@@ -1,6 +1,6 @@
-# Exit Day
+# Cleara
 
-Scheduled liquidity events for thinly traded tokenized assets on Solana.
+Exit Day auctions: Scheduled liquidity events for thinly traded tokenized assets on Solana.
 
 An issuer schedules one auction for one asset. Approved participants place buy and sell limit orders until a single
 deadline. After the deadline, anyone can trigger settlement: the program computes one clearing price that maximises
