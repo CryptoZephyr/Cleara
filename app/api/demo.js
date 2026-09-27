@@ -62734,6 +62734,7 @@ var import_web3 = __toESM(require_index_cjs(), 1);
 var PROGRAM_ID = new import_web3.PublicKey("AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W");
 var SIDE_BUY = 1;
 var SIDE_SELL = 2;
+var STATUS_SETTLED = 1;
 var enc = new TextEncoder();
 function u64le(n) {
   const b = new Uint8Array(8);
@@ -66740,6 +66741,8 @@ var MIN_OPERATOR_SOL = 0.5;
 var OPERATOR_USDC_RESERVE = 8n;
 var MAX_BASE = 1000n;
 var MAX_QUOTE = 10n;
+var MAX_OPEN_PER_WALLET = 2;
+var MAX_OPEN_TOTAL = 12;
 var DemoError = class extends Error {
   status;
   constructor(message, status) {
@@ -66812,6 +66815,13 @@ async function handler(req, res) {
       const scenario = SCENARIOS[body.scenario];
       if (!asset || !scenario) return res.status(400).json({ error: "Unknown asset or scenario." });
       const operator = parseSecret(process.env.CLEARA_OPERATOR_SECRET);
+      const now = Math.floor(Date.now() / 1e3);
+      const open = (await makeProgram(conn, operator).account.auction.all([{ memcmp: { offset: 8, bytes: operator.publicKey.toBase58() } }])).filter(
+        (x) => x.account.status !== STATUS_SETTLED && x.account.deadline.toNumber() > now
+      );
+      if (open.filter((x) => x.account.roster.slice(0, x.account.rosterLen).some((r) => r.participant.equals(wallet))).length >= MAX_OPEN_PER_WALLET)
+        throw new DemoError(`This wallet already has ${MAX_OPEN_PER_WALLET} demo events open. Try again once one closes (about ${Math.ceil(DEMO_OPEN_SECS / 60)} minutes).`, 429);
+      if (open.length >= MAX_OPEN_TOTAL) throw new DemoError("Too many demo events are open right now. Try again in a few minutes, or use the seeded events.", 429);
       const pool = await balance(conn, quoteAta(operator.publicKey));
       const need = scenario.orders.filter((o3) => o3.side === SIDE_BUY).reduce((n, o3) => n + quoteCeil(parseAtoms(o3.qty, asset.decimals), parseAtoms(o3.price, CONFIG.quoteDecimals), asset.decimals), 0n);
       if (pool < need)

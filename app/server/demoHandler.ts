@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
-import { SIDE_BUY, formatAtoms, parseAtoms, quoteCeil } from "../shared/cleara";
+import { SIDE_BUY, STATUS_SETTLED, formatAtoms, parseAtoms, quoteCeil } from "../shared/cleara";
 import { CONFIG, assetByMint } from "../shared/config";
 import { SCENARIOS, type ScenarioId } from "../shared/scenarios";
-import { baseAta, botKeypair, createEvent, fundIxs, parseSecret, quoteAta, send } from "./operator";
+import { baseAta, botKeypair, createEvent, fundIxs, makeProgram, parseSecret, quoteAta, send } from "./operator";
 import { attestIx } from "./sas";
 
 const DEMO_OPEN_SECS = 240;
@@ -15,6 +15,8 @@ const MIN_OPERATOR_SOL = 0.5;
 const OPERATOR_USDC_RESERVE = 8n;
 const MAX_BASE = 1000n;
 const MAX_QUOTE = 10n;
+const MAX_OPEN_PER_WALLET = 2;
+const MAX_OPEN_TOTAL = 12;
 
 class DemoError extends Error {
   status: number;
@@ -94,6 +96,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const scenario = SCENARIOS[body.scenario as ScenarioId];
       if (!asset || !scenario) return res.status(400).json({ error: "Unknown asset or scenario." });
       const operator = parseSecret(process.env.CLEARA_OPERATOR_SECRET);
+      const now = Math.floor(Date.now() / 1000);
+      const open = (await makeProgram(conn, operator).account.auction.all([{ memcmp: { offset: 8, bytes: operator.publicKey.toBase58() } }])).filter(
+        (x) => x.account.status !== STATUS_SETTLED && x.account.deadline.toNumber() > now
+      );
+      if (open.filter((x) => x.account.roster.slice(0, x.account.rosterLen).some((r) => r.participant.equals(wallet))).length >= MAX_OPEN_PER_WALLET)
+        throw new DemoError(`This wallet already has ${MAX_OPEN_PER_WALLET} demo events open. Try again once one closes (about ${Math.ceil(DEMO_OPEN_SECS / 60)} minutes).`, 429);
+      if (open.length >= MAX_OPEN_TOTAL) throw new DemoError("Too many demo events are open right now. Try again in a few minutes, or use the seeded events.", 429);
       const pool = await balance(conn, quoteAta(operator.publicKey));
       const need = scenario.orders
         .filter((o) => o.side === SIDE_BUY)
