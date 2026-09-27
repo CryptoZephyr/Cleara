@@ -17,13 +17,15 @@ Try it: **https://cleara-ten.vercel.app**
 
 ## How it works
 
-1. **An event is scheduled** for one asset, with a deadline.
-2. **Buyers and sellers place orders** before the deadline: "I'll buy up to 50 at no more than 1.00 test dollars each" or
+1. **An event is scheduled** for one asset, with a deadline and a list of people approved to take part.
+2. **Approved buyers and sellers place orders** before the deadline: "I'll buy up to 50 at no more than 1.00 test dollars each" or
    "I'll sell 40 at no less than 0.95". Their money or tokens are held in the event until it ends. Everyone can see the orders.
-3. **At the deadline, Cleara finds one price** where the most buying and selling can happen.
+3. **After the deadline, anyone can press "settle".** Cleara then finds the one price where the most buying and
+   selling can happen.
 4. **Everyone who matches trades at that price**, all in one step. Anything that didn't match goes back to its owner.
 
-If nobody's prices meet, nothing trades and everyone gets their money or tokens back.
+If nobody's prices meet, nothing trades and everyone gets their money or tokens back when the event is settled.
+If nobody settles it in time, the event expires and each order can be refunded one by one.
 
 ![A finished event: one price for everyone, with a receipt for each order](docs/images/settlement.png)
 
@@ -39,7 +41,7 @@ If nobody's prices meet, nothing trades and everyone gets their money or tokens 
 1. Open https://cleara-ten.vercel.app and click **Explore events**.
 2. Click **Connect wallet** and choose **Cleara demo wallet (Devnet)**. It's a throwaway test wallet in your browser,
    with no extension or sign-up.
-3. Under **Try it**, pick an asset and click **Start demo event**. You get a 4-minute event with a few practice
+3. Under **Try it**, pick an asset and a starting order book, then click **Start demo event**. You get a 4-minute event with a few practice
    orders already in it.
 4. Place a buy or sell order. If you need test tokens, click **Get demo funds**. Check the summary, then confirm.
 5. Watch the expected price update. You can cancel and place the order again before the deadline.
