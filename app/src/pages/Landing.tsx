@@ -63,20 +63,20 @@ function HeroVisual() {
   return (
     <div className="grid grid-cols-12 gap-y-4" aria-label="Synthetic example of one clearing event">
       <div className="relative z-0 col-span-8 row-span-2 max-md:col-span-12">
-        <Window title="Clearing event · NRTH / dUSDC" active right={<span className="label">Synthetic example</span>} bodyClass="p-0">
+        <Window title="Clearing event · NRTH / USDC" active right={<span className="label">Synthetic example</span>} bodyClass="p-0">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2 text-[13px]">
             <span className="font-semibold">{HERO_ASSET?.name ?? "Northwind Robotics Series B (synthetic)"}</span>
             <span className="inline-flex items-center gap-1.5 rounded-[3px] bg-devnet px-2 py-0.5 label text-cream">Devnet</span>
           </div>
           <p className="m-0 border-b border-line px-4 py-2 mono text-[13px]">Order deadline Fri 16:00 UTC · illustrative</p>
           <div className="p-4 pb-3">
-            <DepthChart orders={book} clearing={c} baseDecimals={DEC} quoteDecimals={DEC} quoteSymbol="dUSDC" baseSymbol="NRTH" height={190} compact animatePoint title="Synthetic example: stepped buy demand and sell supply crossing at one clearing price" />
+            <DepthChart orders={book} clearing={c} baseDecimals={DEC} quoteDecimals={DEC} quoteSymbol="USDC" baseSymbol="NRTH" height={190} compact animatePoint title="Synthetic example: stepped buy demand and sell supply crossing at one clearing price" />
           </div>
           <div className="grid grid-cols-2 border-t-2 border-emerald">
             <div className="border-r-2 border-emerald p-4 max-sm:p-3">
               <p className="m-0 label text-muted">Provisional clearing price</p>
               <p className="m-0 mono text-[26px] leading-[32px]">{formatAtoms(c.price, DEC, 4)}</p>
-              <p className="m-0 text-[12px] text-muted">dUSDC per NRTH · may change until the deadline</p>
+              <p className="m-0 text-[12px] text-muted">USDC per NRTH · may change until the deadline</p>
             </div>
             <div className="p-4 max-sm:p-3">
               <p className="m-0 label text-muted">Executable quantity</p>
@@ -97,7 +97,7 @@ function HeroVisual() {
           <dl className="m-0 grid grid-cols-2 text-[13px]">
             <div className="border-b border-r border-line px-4 py-2"><dt className="label text-muted">Closes in</dt><dd className="m-0 mono text-[15px]">2d 04h 12m</dd></div>
             <div className="border-b border-line px-4 py-2"><dt className="label text-muted">Overlapping orders</dt><dd className="m-0 mono text-[15px]">{overlapping} of {funded}</dd></div>
-            <div className="border-r border-line px-4 py-2"><dt className="label text-muted">Provisional price</dt><dd className="m-0 mono text-[15px]">{formatAtoms(c.price, DEC, 4)} dUSDC</dd></div>
+            <div className="border-r border-line px-4 py-2"><dt className="label text-muted">Provisional price</dt><dd className="m-0 mono text-[15px]">{formatAtoms(c.price, DEC, 4)} USDC</dd></div>
             <div className="px-4 py-2"><dt className="label text-muted">Settlement</dt><dd className="m-0">After the deadline, one all-or-nothing transaction</dd></div>
           </dl>
         </Window>
@@ -150,7 +150,7 @@ function MechanismPreview() {
       </div>
       <div className="grid grid-cols-12 gap-6 p-5 max-sm:p-4">
         <div className="col-span-7 max-lg:col-span-12">
-          <DepthChart orders={book} clearing={c} baseDecimals={DEC} quoteDecimals={DEC} quoteSymbol="dUSDC" baseSymbol="NRTH" height={260} />
+          <DepthChart orders={book} clearing={c} baseDecimals={DEC} quoteDecimals={DEC} quoteSymbol="USDC" baseSymbol="NRTH" height={260} />
         </div>
         <div className="col-span-5 flex flex-col gap-3 max-lg:col-span-12" aria-live="polite">
           <p className="m-0 text-[17px] font-semibold">{cur.title}</p>
@@ -169,7 +169,7 @@ function MechanismPreview() {
             </tbody>
           </table>
           <p className="m-0 mono text-[13px]">
-            {tab === "recovery" ? "Nothing traded · escrow refundable per order" : c.volume > 0n ? `Clears at ${formatAtoms(c.price, DEC, 4)} dUSDC · ${formatAtoms(c.volume, DEC, 2)} NRTH matched` : "No executable price · all orders returned"}
+            {tab === "recovery" ? "Nothing traded · escrow refundable per order" : c.volume > 0n ? `Clears at ${formatAtoms(c.price, DEC, 4)} USDC · ${formatAtoms(c.volume, DEC, 2)} NRTH matched` : "No executable price · all orders returned"}
           </p>
         </div>
       </div>
@@ -184,7 +184,7 @@ const FAQ: [string, string][] = [
   ["What if more is offered than bought?", "Orders with better limits fill first. At the marginal price, fills are shared pro rata and leftover units go to lower slot numbers. The unfilled part is returned at settlement."],
   ["What happens if settlement never happens?", "After the settlement window ends, anyone can refund each order's escrow to its owner, one order at a time. Refunds remain subject to the asset's transfer rules."],
   ["Why only eight orders?", "So the whole event settles in one all-or-nothing transaction. Approved participants and per-participant allowances stop one wallet from filling every slot."],
-  ["Is anything here real?", "No. The assets, participants and quote token are synthetic and run on Solana Devnet."],
+  ["Is anything here real?", "No. The assets and participants are synthetic, and prices are paid in Circle's free test USDC. Everything runs on Solana Devnet with no real value."],
 ];
 
 export default function Landing() {

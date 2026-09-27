@@ -4,10 +4,12 @@ import { CONFIG } from "../../shared/config";
 import { SIDE_BUY, SIDE_EMPTY, SIDE_SELL, formatAtoms, parseAtoms, quoteCeil } from "../../shared/cleara";
 import { cancelOrderIxs, explainError, explorerTx, placeOrderIxs, sendIxs, tokenBalance, type AuctionView } from "../lib/chain";
 import { requestFunds } from "../lib/api";
+import { isValid, useAttestations } from "../lib/attest";
 import { dateTime, fmtBase, fmtPrice, fmtQuote, pair } from "../lib/format";
 import { useSolBalance, WalletDialog } from "./Wallet";
 import { IconExternal, IconX } from "./icons";
 import { Notice, SideTag } from "./ui";
+import { PayQr } from "./PayQr";
 
 function Overlay({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -70,7 +72,8 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
   const sol = useSolBalance();
   const [side, setSide] = useState(initialSide);
   const [price, setPrice] = useState(() => (initialSide === SIDE_BUY ? "0.97" : "0.93"));
-  const [qty, setQty] = useState("20");
+  const [qty, setQty] = useState("2");
+  const [phone, setPhone] = useState(false);
   const [step, setStep] = useState<Step>({ kind: "form" });
   const [bal, setBal] = useState<{ base: bigint; quote: bigint } | null>(null);
   const [funding, setFunding] = useState<string | null>(null);
@@ -92,6 +95,8 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
   const locked = p && q ? (side === SIDE_BUY ? quoteCeil(q, p, a.baseDecimals) : q) : null;
   const roster = me ? a.roster.find((r) => r.participant === me) : undefined;
   const remaining = roster ? roster.allowance - roster.active : 0;
+  const atts = useAttestations(me ? [me] : []);
+  const credential = me && atts ? atts.get(me) : undefined;
   const mine = a.orders.filter((o) => o.side !== SIDE_EMPTY && o.owner === me);
   const oppositeSide = mine.some((o) => o.side !== side);
   const freeSlots = a.orders.filter((o) => o.side === SIDE_EMPTY).length;
@@ -110,7 +115,7 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
 
   async function fund() {
     if (!me) return;
-    setFunding("Requesting synthetic tokens and devnet SOL…");
+    setFunding("Requesting demo tokens and devnet SOL…");
     try {
       const r = await requestFunds(me, a.baseMint, locked === null ? {} : side === SIDE_BUY ? { quote: locked } : { base: locked });
       setFunding(r.message);
@@ -206,9 +211,20 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
               {me && !roster && <p className="mb-0 mt-2">Start your own demo event from the Events page to join one as an approved participant.</p>}
             </Notice>
           )}
+          {roster && CONFIG.sas && credential !== undefined && (
+            <p className="m-0 text-[13px] text-muted">
+              Participant credential: {isValid(credential, Date.now() / 1000) ? "valid Cleara credential on the Solana Attestation Service (Devnet)" : "none found on the Solana Attestation Service; the event's approved list still applies"}.
+            </p>
+          )}
+          {shortBalance && side === SIDE_BUY && (
+            <p className="m-0 text-[13px] text-muted">
+              Buy orders lock {CONFIG.quoteName}. Get it free at{" "}
+              <a className="text-ink underline underline-offset-2" href={CONFIG.quoteFaucet} target="_blank" rel="noreferrer">faucet.circle.com</a>: choose Solana Devnet and paste your wallet address.
+            </p>
+          )}
           {(shortBalance || lowSol) && roster && (
             <div className="flex flex-col gap-2">
-              <button type="button" className="btn btn-secondary" onClick={fund} disabled={funding === "Requesting synthetic tokens and devnet SOL…"}>Get demo funds</button>
+              <button type="button" className="btn btn-secondary" onClick={fund} disabled={funding === "Requesting demo tokens and devnet SOL…"}>Get demo funds</button>
               {funding && <p className="m-0 text-[13px] text-muted" aria-live="polite">{funding}</p>}
             </div>
           )}
@@ -230,6 +246,11 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
             <dt className="text-muted">If unmatched</dt><dd className="m-0">Returned at settlement, or refundable after {dateTime(a.settleBy)}, subject to the token's transfer rules.</dd>
           </dl>
           {step.kind === "error" && <Notice tone="danger" title="Order not placed">{step.msg}</Notice>}
+          {phone ? (
+            <PayQr a={a} side={side} price={price} qty={qty} owner={me} onClose={() => setPhone(false)} />
+          ) : (
+            <button type="button" className="btn btn-secondary" onClick={() => setPhone(true)} disabled={step.kind === "signing"}>Sign on your phone (Solana Pay)</button>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" className="btn btn-secondary" onClick={() => setStep({ kind: "form" })} disabled={step.kind === "signing"}>Edit</button>
             <button type="button" className="btn btn-primary" onClick={submit} disabled={step.kind === "signing"}>

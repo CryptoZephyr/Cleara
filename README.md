@@ -43,7 +43,9 @@ If nobody settles it in time, the event expires and each order can be refunded o
    with no extension or sign-up.
 3. Under **Try it**, pick an asset and a starting order book, then click **Start demo event**. You get a 4-minute event with a few practice
    orders already in it.
-4. Place a buy or sell order. If you need test tokens, click **Get demo funds**. Check the summary, then confirm.
+4. Place a buy or sell order. If you need test tokens, click **Get demo funds**. Buy orders use Circle's free test USDC;
+   if the demo pool is empty, get some at [faucet.circle.com](https://faucet.circle.com) (choose Solana Devnet). Check the
+   summary, then confirm, or tap **Sign on your phone** to sign the same order from a mobile wallet with Solana Pay.
 5. Watch the expected price update. You can cancel and place the order again before the deadline.
 6. When time runs out, click **Settle event now** and see your receipt.
 7. Open **My orders** to see your history, or look at the other example events (finished, partly filled, expired).
@@ -70,7 +72,9 @@ Everything below is the technical detail: addresses, code layout, setup and the 
 | --- | --- |
 | Program | [`AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W`](https://explorer.solana.com/address/AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W?cluster=devnet) |
 | Upgrade authority | `6zucjHBkFGvYrMckh3eamw9Bq5KmAWRLVJvqXSYG4nMp` |
-| Quote mint (dUSDC, synthetic) | `Fk454Hd66rMQ2kRtNsCRF3m6XKZgGy8d8RWPvvVaDrCX` |
+| Quote mint (Circle Devnet USDC) | `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` |
+| SAS credential (Cleara Demo Issuer) | `F99sG76xbkyqRarMrjWWAZtMfb35xZPnzZChz7eMzhSZ` |
+| SAS schema (`cleara-approved-participant` v1) | `8GdhHzqjSbDm5MEPj8Qq8ZbdMxK2Fg6ieHFEDuEiQbo9` |
 | NRTH, Northwind Robotics (synthetic) | `HFHZDubMuKFJ1Q1WEtF7GoxNjgA2WfsnXErfVdhMmUiC` |
 | HLCN, Halcyon Solar Credit Note (synthetic) | `Cp12dQeWgNRuUbDXHnkW1rRx5DeCrN2ykr3epiXtNda7` |
 | ORCH, Orchard Lane Residences (synthetic) | `GR9xzAkoqQ9YcAqGbqEBNYwoCkcuQ4F7LyJsKUEvpnBP` |
@@ -109,19 +113,28 @@ runs as a Vercel function; use `npx vercel dev` to serve it locally.
 | `CLEARA_OPERATOR_SECRET` | server only | Operator keypair that funds demo wallets and creates demo events. Never expose it to the browser. |
 
 Checks: `npm run typecheck`, `npm run lint`, `npm run build`. After changing `server/`, run `npm run build:api`
-and commit the regenerated `api/demo.js`.
+and commit the regenerated `api/demo.js` and `api/pay.js`.
 
-The Devnet setup scripts (`scripts/setup-devnet.ts`, `scripts/seed-events.ts`) read keypairs from
-`~/.config/solana/cleara-owner.json` and `~/.config/solana/cleara-operator.json`, which are never committed. Run them with `npx tsx`.
+The Devnet setup scripts (`scripts/setup-devnet.ts`, `scripts/setup-sas.ts`, `scripts/seed-events.ts`) read keypairs from
+`~/.config/solana/cleara-owner.json` and `~/.config/solana/cleara-operator.json`, which are never committed. Bundle them with esbuild
+(the same flags as `build:api`) and run the output with `node`. Seed events need test USDC in the operator wallet
+from faucet.circle.com; `seed-events` accepts `--only=settled,crossing,expired,no-overlap`.
 
 ### Demo API
 
 `POST /api/demo` with a JSON body:
 
 - `{ "action": "fund", "wallet": "<pubkey>", "asset": "<base mint>", "base": "<atoms>", "quote": "<atoms>" }` tops up
-  synthetic tokens and a little SOL, up to fixed caps.
+  synthetic base tokens, a little SOL and, while the operator's pool lasts, a few test USDC, up to fixed caps.
 - `{ "action": "event", "wallet": "<pubkey>", "asset": "<base mint>", "scenario": "crossing" | "partial" | "no-overlap" }`
-  creates a 4-minute event with bot orders and puts the wallet on the roster.
+  creates a 4-minute event with bot orders, puts the wallet on the roster and issues it a Cleara participant credential on
+  the Solana Attestation Service (Devnet). The credential is informational; the program still enforces the event's roster.
+
+`GET|POST /api/pay?auction=<event>&side=1|2&price=<decimal>&qty=<decimal>` is a Solana Pay transaction request. `GET`
+returns the label and icon; `POST { "account": "<pubkey>" }` returns an unsigned `place_order` transaction for that wallet,
+after checking the roster, credential, deadline and balance.
+
+The app streams account changes over the Solana RPC websocket, with a slow polling fallback.
 
 The operator refuses requests once its balance falls below 0.5 SOL. There's no per-caller rate limit yet.
 

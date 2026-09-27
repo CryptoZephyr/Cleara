@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { CONFIG } from "../../shared/config";
 import { MAX_ORDERS, SIDE_BUY, SIDE_EMPTY, SIDE_SELL, clear, quoteCeil, type Clearing } from "../../shared/cleara";
-import { activeOrders, phaseOf, type AuctionView, type Phase } from "../lib/chain";
+import { activeOrders, explorerAddr, phaseOf, type AuctionView, type Phase } from "../lib/chain";
+import { isValid, useAttestations } from "../lib/attest";
 import { alias, countdown, dateTime, eventLabel, fmtBase, fmtPrice, fmtQuote, pair } from "../lib/format";
 import { DepthChart } from "./DepthChart";
 import { Copyable, PhaseBadge, SideTag, Stat, SyntheticTag, Window } from "./ui";
@@ -208,6 +209,8 @@ export function ProvisionalClearing({ a, clearing, now }: { a: AuctionView; clea
 
 export function Rules({ a }: { a: AuctionView }) {
   const sym = a.asset?.symbol ?? "";
+  const atts = useAttestations(a.roster.map((r) => r.participant));
+  const verified = atts ? a.roster.filter((r) => isValid(atts.get(r.participant), Date.now() / 1000)).length : null;
   const rows: [string, string][] = [
     ["Order deadline", dateTime(a.deadline)],
     ["Cancellation cutoff", "Same as the order deadline"],
@@ -220,6 +223,7 @@ export function Rules({ a }: { a: AuctionView }) {
     ["Allocation", "Price priority, then pro rata at the marginal price; leftover units by slot order"],
     ["Settlement", "All orders settle in one all-or-nothing transaction"],
     ["Participants", `${a.roster.length} approved wallets`],
+    ["Quote token", `${CONFIG.quoteName}, free from faucet.circle.com`],
   ];
   return (
     <Window title="Event rules">
@@ -231,6 +235,13 @@ export function Rules({ a }: { a: AuctionView }) {
           </div>
         ))}
       </dl>
+      {CONFIG.sas && (
+        <p className="mb-0 mt-3 border-t border-line pt-3 text-[13px] leading-[18px]">
+          <span className="font-semibold">Participant credentials:</span>{" "}
+          {verified === null ? "checking…" : `${verified} of ${a.roster.length} approved wallets hold a Cleara participant credential`} on the{" "}
+          <a className="text-ink underline underline-offset-2" href={explorerAddr(CONFIG.sas.credential)} target="_blank" rel="noreferrer">Solana Attestation Service</a> (Devnet, issued by the demo operator). The program still checks the event's own approved list when an order is placed.
+        </p>
+      )}
     </Window>
   );
 }
