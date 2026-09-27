@@ -75,17 +75,6 @@ export function SideTag({ side }: { side: number }) {
   );
 }
 
-export function NetBadge({ net }: { net: "devnet" | "mainnet" }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-[3px] px-2 py-0.5 label text-cream ${net === "devnet" ? "bg-devnet" : "bg-mainnet"}`}
-    >
-      <span className="inline-block h-2 w-2 rounded-full border border-cream" aria-hidden />
-      {net === "devnet" ? "Devnet event" : "Mainnet quote"}
-    </span>
-  );
-}
-
 export function SyntheticTag() {
   return <span className="inline-flex items-center rounded-[3px] border border-devnet px-1.5 py-px label text-devnet">Synthetic</span>;
 }

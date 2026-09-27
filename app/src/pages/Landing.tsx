@@ -184,7 +184,7 @@ const FAQ: [string, string][] = [
   ["What if more is offered than bought?", "Orders with better limits fill first. At the marginal price, fills are shared pro rata and leftover units go to lower slot numbers. The unfilled part is returned at settlement."],
   ["What happens if settlement never happens?", "After the settlement window ends, anyone can refund each order's escrow to its owner, one order at a time. Refunds remain subject to the asset's transfer rules."],
   ["Why only eight orders?", "So the whole event settles in one all-or-nothing transaction. Approved participants and per-participant allowances stop one wallet from filling every slot."],
-  ["Is anything here real?", "No. The assets, participants and quote token are synthetic and run on Solana Devnet. Only the Jupiter comparison uses a real mainnet quote, and it is labelled separately."],
+  ["Is anything here real?", "No. The assets, participants and quote token are synthetic and run on Solana Devnet."],
 ];
 
 export default function Landing() {

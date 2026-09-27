@@ -10,7 +10,6 @@ import { eventLabel, pair } from "../lib/format";
 import { Page } from "../components/Shell";
 import { DepthChart } from "../components/DepthChart";
 import { Countdown, OrderBook, ProvisionalClearing, Rules } from "../components/EventParts";
-import { MainnetComparison } from "../components/Jupiter";
 import { CancelDialog, OrderDrawer } from "../components/OrderDrawer";
 import { RefundPanel, SettlePanel, SettlementResult } from "../components/Settlement";
 import { WalletDialog } from "../components/Wallet";
@@ -162,11 +161,6 @@ export default function EventDetail() {
           )}
           <Rules a={a} />
         </aside>
-        {a.asset && (
-          <div className="col-span-12">
-            <MainnetComparison a={a} clearing={clearing} now={now} />
-          </div>
-        )}
       </div>
       {open && (
         <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t-2 border-emerald bg-cream p-3 lg:hidden">

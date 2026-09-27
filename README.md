@@ -58,9 +58,6 @@ If nobody settles it in time, the event expires and each order can be refunded o
 | --- | --- |
 | <img src="docs/images/mobile-landing.png" width="300" alt="Mobile home page"> | <img src="docs/images/mobile-expired.png" width="300" alt="Mobile expired event"> |
 
-Each event page also shows what selling right now on Jupiter (a Solana trading app) would give for a similar real
-token, so you can compare. That quote comes from the real market and is kept clearly separate from the test event.
-
 ---
 
 # For developers
