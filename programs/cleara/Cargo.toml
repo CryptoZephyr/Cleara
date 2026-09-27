@@ -1,12 +1,12 @@
 [package]
-name = "exit_day"
+name = "cleara"
 version = "0.1.0"
 description = "Scheduled uniform-price exit auctions for thin tokenized assets"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "exit_day"
+name = "cleara"
 
 [features]
 default = []

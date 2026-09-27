@@ -7,10 +7,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-exit_day = "AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W"
+cleara = "AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W"
 
 [programs.devnet]
-exit_day = "AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W"
+cleara = "AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W"
 
 [provider]
 cluster = "localnet"

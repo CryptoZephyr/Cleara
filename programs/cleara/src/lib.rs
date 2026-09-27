@@ -28,7 +28,7 @@ const ALLOWED_MINT_EXTENSIONS: &[ExtensionType] =
     &[ExtensionType::MetadataPointer, ExtensionType::TokenMetadata];
 
 #[program]
-pub mod exit_day {
+pub mod cleara {
     use super::*;
 
     pub fn create_auction(
@@ -41,18 +41,18 @@ pub mod exit_day {
         roster: Vec<RosterInput>,
     ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
-        require!(deadline > now, ExitDayError::BadSchedule);
-        require!(settle_by > deadline, ExitDayError::BadSchedule);
-        require!(fee_bps <= MAX_FEE_BPS, ExitDayError::FeeTooHigh);
-        require!(min_base_qty > 0, ExitDayError::OrderTooSmall);
+        require!(deadline > now, ClearaError::BadSchedule);
+        require!(settle_by > deadline, ClearaError::BadSchedule);
+        require!(fee_bps <= MAX_FEE_BPS, ClearaError::FeeTooHigh);
+        require!(min_base_qty > 0, ClearaError::OrderTooSmall);
         require!(
             !roster.is_empty() && roster.len() <= MAX_ROSTER,
-            ExitDayError::BadRoster
+            ClearaError::BadRoster
         );
         require_keys_neq!(
             ctx.accounts.base_mint.key(),
             ctx.accounts.quote_mint.key(),
-            ExitDayError::SameMint
+            ClearaError::SameMint
         );
         check_mint_extensions(&ctx.accounts.base_mint.to_account_info())?;
         check_mint_extensions(&ctx.accounts.quote_mint.to_account_info())?;
@@ -78,11 +78,11 @@ pub mod exit_day {
         for (i, r) in roster.iter().enumerate() {
             require!(
                 r.allowance > 0 && r.allowance as usize <= MAX_ORDERS,
-                ExitDayError::BadRoster
+                ClearaError::BadRoster
             );
             require!(
                 !roster[..i].iter().any(|p| p.participant == r.participant),
-                ExitDayError::BadRoster
+                ClearaError::BadRoster
             );
             a.roster[i] = RosterEntry {
                 participant: r.participant,
@@ -102,17 +102,17 @@ pub mod exit_day {
     ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let a = &mut ctx.accounts.auction;
-        require!(a.status == STATUS_OPEN, ExitDayError::NotOpen);
-        require!(now < a.deadline, ExitDayError::PastDeadline);
-        require!(side == SIDE_BUY || side == SIDE_SELL, ExitDayError::BadSide);
-        require!(limit_price > 0, ExitDayError::BadPrice);
-        require!(qty >= a.min_base_qty, ExitDayError::OrderTooSmall);
+        require!(a.status == STATUS_OPEN, ClearaError::NotOpen);
+        require!(now < a.deadline, ClearaError::PastDeadline);
+        require!(side == SIDE_BUY || side == SIDE_SELL, ClearaError::BadSide);
+        require!(limit_price > 0, ClearaError::BadPrice);
+        require!(qty >= a.min_base_qty, ClearaError::OrderTooSmall);
 
         let owner = ctx.accounts.owner.key();
-        let r = a.roster_index(&owner).ok_or(ExitDayError::NotOnRoster)?;
+        let r = a.roster_index(&owner).ok_or(ClearaError::NotOnRoster)?;
         require!(
             a.roster[r].active < a.roster[r].allowance,
-            ExitDayError::AllowanceUsed
+            ClearaError::AllowanceUsed
         );
         let opposite = if side == SIDE_BUY {
             SIDE_SELL
@@ -123,20 +123,20 @@ pub mod exit_day {
             !a.orders
                 .iter()
                 .any(|o| o.side == opposite && o.owner == owner),
-            ExitDayError::SelfTrade
+            ClearaError::SelfTrade
         );
         let slot = a
             .orders
             .iter()
             .position(|o| o.side == SIDE_EMPTY)
-            .ok_or(ExitDayError::BookFull)?;
+            .ok_or(ClearaError::BookFull)?;
 
         let escrowed = if side == SIDE_SELL {
             qty
         } else {
             quote_ceil(qty, limit_price, a.base_decimals)?
         };
-        require!(escrowed > 0, ExitDayError::OrderTooSmall);
+        require!(escrowed > 0, ClearaError::OrderTooSmall);
 
         a.orders[slot] = Order {
             owner,
@@ -184,18 +184,18 @@ pub mod exit_day {
         let now = Clock::get()?.unix_timestamp;
         let auction_key = ctx.accounts.auction.key();
         let a = &mut ctx.accounts.auction;
-        require!(a.status == STATUS_OPEN, ExitDayError::NotOpen);
-        require!(now < a.deadline, ExitDayError::PastDeadline);
+        require!(a.status == STATUS_OPEN, ClearaError::NotOpen);
+        require!(now < a.deadline, ClearaError::PastDeadline);
         let s = slot as usize;
         require!(
             s < MAX_ORDERS && a.orders[s].side != SIDE_EMPTY,
-            ExitDayError::EmptySlot
+            ClearaError::EmptySlot
         );
         let owner = ctx.accounts.owner.key();
-        require_keys_eq!(a.orders[s].owner, owner, ExitDayError::NotOrderOwner);
+        require_keys_eq!(a.orders[s].owner, owner, ClearaError::NotOrderOwner);
         let order = a.orders[s];
         a.orders[s] = Order::default();
-        let r = a.roster_index(&owner).ok_or(ExitDayError::NotOnRoster)?;
+        let r = a.roster_index(&owner).ok_or(ClearaError::NotOnRoster)?;
         a.roster[r].active -= 1;
 
         let (issuer, id, bump) = (a.issuer, a.auction_id, a.bump);
@@ -237,9 +237,9 @@ pub mod exit_day {
         let auction_key = ctx.accounts.auction.key();
         let (orders, base_decimals, fee_bps, issuer, id, bump) = {
             let a = &ctx.accounts.auction;
-            require!(a.status == STATUS_OPEN, ExitDayError::NotOpen);
-            require!(now >= a.deadline, ExitDayError::BeforeDeadline);
-            require!(now <= a.settle_by, ExitDayError::SettlementExpired);
+            require!(a.status == STATUS_OPEN, ClearaError::NotOpen);
+            require!(now >= a.deadline, ClearaError::BeforeDeadline);
+            require!(now <= a.settle_by, ClearaError::SettlementExpired);
             (
                 a.orders,
                 a.base_decimals,
@@ -254,7 +254,7 @@ pub mod exit_day {
             .filter(|&i| orders[i].side != SIDE_EMPTY)
             .collect();
         let rem = ctx.remaining_accounts;
-        require!(rem.len() == active.len() * 2, ExitDayError::WrongAccounts);
+        require!(rem.len() == active.len() * 2, ClearaError::WrongAccounts);
 
         let total_quote: u64 = orders
             .iter()
@@ -268,11 +268,11 @@ pub mod exit_day {
             .sum();
         require!(
             ctx.accounts.quote_vault.amount == total_quote,
-            ExitDayError::VaultMismatch
+            ClearaError::VaultMismatch
         );
         require!(
             ctx.accounts.base_vault.amount == total_base,
-            ExitDayError::VaultMismatch
+            ClearaError::VaultMismatch
         );
 
         let c = clearing::clear(&orders);
@@ -300,7 +300,7 @@ pub mod exit_day {
                 } else {
                     0
                 };
-                require!(pay <= o.escrowed, ExitDayError::MathError);
+                require!(pay <= o.escrowed, ClearaError::MathError);
                 paid_by_buyers += pay;
                 (fill, o.escrowed - pay)
             } else {
@@ -335,7 +335,7 @@ pub mod exit_day {
             }
         }
 
-        require!(paid_by_buyers >= gross_to_sellers, ExitDayError::MathError);
+        require!(paid_by_buyers >= gross_to_sellers, ClearaError::MathError);
         let to_fee = fees + (paid_by_buyers - gross_to_sellers);
         if to_fee > 0 {
             transfer(
@@ -353,11 +353,11 @@ pub mod exit_day {
         ctx.accounts.quote_vault.reload()?;
         require!(
             ctx.accounts.base_vault.amount == 0,
-            ExitDayError::VaultMismatch
+            ClearaError::VaultMismatch
         );
         require!(
             ctx.accounts.quote_vault.amount == 0,
-            ExitDayError::VaultMismatch
+            ClearaError::VaultMismatch
         );
 
         let a = &mut ctx.accounts.auction;
@@ -382,12 +382,12 @@ pub mod exit_day {
         let now = Clock::get()?.unix_timestamp;
         let auction_key = ctx.accounts.auction.key();
         let a = &mut ctx.accounts.auction;
-        require!(a.status == STATUS_OPEN, ExitDayError::NotOpen);
-        require!(now > a.settle_by, ExitDayError::NotExpired);
+        require!(a.status == STATUS_OPEN, ClearaError::NotOpen);
+        require!(now > a.settle_by, ClearaError::NotExpired);
         let s = slot as usize;
         require!(
             s < MAX_ORDERS && a.orders[s].side != SIDE_EMPTY,
-            ExitDayError::EmptySlot
+            ClearaError::EmptySlot
         );
         let order = a.orders[s];
         a.orders[s] = Order::default();
@@ -402,7 +402,7 @@ pub mod exit_day {
             require_keys_eq!(
                 ctx.accounts.owner_base.owner,
                 order.owner,
-                ExitDayError::WrongAccounts
+                ClearaError::WrongAccounts
             );
             transfer(
                 &ctx.accounts.base_token_program,
@@ -417,7 +417,7 @@ pub mod exit_day {
             require_keys_eq!(
                 ctx.accounts.owner_quote.owner,
                 order.owner,
-                ExitDayError::WrongAccounts
+                ClearaError::WrongAccounts
             );
             transfer(
                 &ctx.accounts.quote_token_program,
@@ -445,12 +445,12 @@ fn scale(decimals: u8) -> u128 {
 pub fn quote_ceil(qty: u64, price: u64, base_decimals: u8) -> Result<u64> {
     let n = qty as u128 * price as u128;
     let s = scale(base_decimals);
-    u64::try_from(n.div_ceil(s)).map_err(|_| error!(ExitDayError::MathError))
+    u64::try_from(n.div_ceil(s)).map_err(|_| error!(ClearaError::MathError))
 }
 
 pub fn quote_floor(qty: u64, price: u64, base_decimals: u8) -> Result<u64> {
     let n = qty as u128 * price as u128;
-    u64::try_from(n / scale(base_decimals)).map_err(|_| error!(ExitDayError::MathError))
+    u64::try_from(n / scale(base_decimals)).map_err(|_| error!(ClearaError::MathError))
 }
 
 fn check_mint_extensions(mint: &AccountInfo) -> Result<()> {
@@ -462,18 +462,18 @@ fn check_mint_extensions(mint: &AccountInfo) -> Result<()> {
     for ext in state.get_extension_types()? {
         require!(
             ALLOWED_MINT_EXTENSIONS.contains(&ext),
-            ExitDayError::UnsupportedExtension
+            ClearaError::UnsupportedExtension
         );
     }
     Ok(())
 }
 
 fn check_owner_account<'a>(ai: &'a AccountInfo<'a>, owner: &Pubkey, mint: &Pubkey) -> Result<()> {
-    require!(ai.is_writable, ExitDayError::WrongAccounts);
+    require!(ai.is_writable, ClearaError::WrongAccounts);
     let ta = InterfaceAccount::<TokenAccount>::try_from(ai)
-        .map_err(|_| error!(ExitDayError::WrongAccounts))?;
-    require_keys_eq!(ta.owner, *owner, ExitDayError::WrongAccounts);
-    require_keys_eq!(ta.mint, *mint, ExitDayError::WrongAccounts);
+        .map_err(|_| error!(ClearaError::WrongAccounts))?;
+    require_keys_eq!(ta.owner, *owner, ClearaError::WrongAccounts);
+    require_keys_eq!(ta.mint, *mint, ClearaError::WrongAccounts);
     Ok(())
 }
 
@@ -709,7 +709,7 @@ pub struct AuctionSettled {
 }
 
 #[error_code]
-pub enum ExitDayError {
+pub enum ClearaError {
     #[msg("Deadline must be in the future and settle_by after the deadline")]
     BadSchedule,
     #[msg("Fee exceeds maximum")]

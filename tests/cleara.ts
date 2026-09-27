@@ -22,7 +22,7 @@ import {
   getAccount,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { ExitDay } from "../target/types/exit_day";
+import { Cleara } from "../target/types/cleara";
 
 // All orders in these tests are synthetic: fake tokens, fake participants, devnet/localnet only.
 
@@ -35,15 +35,18 @@ const FEE_BPS = 50;
 const tok = (n: number) => new BN(Math.round(n * ONE));
 const price = (usd: number) => new BN(Math.round(usd * ONE));
 
-describe("exit_day (synthetic orders)", () => {
+describe("cleara (synthetic orders)", () => {
   const provider = new anchor.AnchorProvider(
     anchor.AnchorProvider.env().connection,
     anchor.AnchorProvider.env().wallet,
     { commitment: "confirmed", preflightCommitment: "confirmed" }
   );
   anchor.setProvider(provider);
-  const program = anchor.workspace.exitDay as Program<ExitDay>;
-  const conn = new anchor.web3.Connection(provider.connection.rpcEndpoint, "confirmed");
+  const program = anchor.workspace.cleara as Program<Cleara>;
+  const conn = new anchor.web3.Connection(
+    provider.connection.rpcEndpoint,
+    "confirmed"
+  );
   const issuer = (provider.wallet as anchor.Wallet).payer;
 
   let baseMint: PublicKey;
@@ -59,7 +62,8 @@ describe("exit_day (synthetic orders)", () => {
   }
 
   async function waitUntil(ts: number) {
-    while ((await chainNow()) <= ts) await new Promise((r) => setTimeout(r, 400));
+    while ((await chainNow()) <= ts)
+      await new Promise((r) => setTimeout(r, 400));
   }
 
   async function party(baseAmt = 0, quoteAmt = 0): Promise<Party> {
@@ -67,7 +71,11 @@ describe("exit_day (synthetic orders)", () => {
     await sendAndConfirmTransaction(
       conn,
       new Transaction().add(
-        SystemProgram.transfer({ fromPubkey: issuer.publicKey, toPubkey: kp.publicKey, lamports: 50_000_000 })
+        SystemProgram.transfer({
+          fromPubkey: issuer.publicKey,
+          toPubkey: kp.publicKey,
+          lamports: 50_000_000,
+        })
       ),
       [issuer]
     );
@@ -83,16 +91,45 @@ describe("exit_day (synthetic orders)", () => {
         TOKEN_2022_PROGRAM_ID
       )
     ).address;
-    const quote = (await getOrCreateAssociatedTokenAccount(conn, issuer, quoteMint, kp.publicKey)).address;
+    const quote = (
+      await getOrCreateAssociatedTokenAccount(
+        conn,
+        issuer,
+        quoteMint,
+        kp.publicKey
+      )
+    ).address;
     if (baseAmt > 0)
-      await mintTo(conn, issuer, baseMint, base, issuer, BigInt(baseAmt * ONE), [], undefined, TOKEN_2022_PROGRAM_ID);
-    if (quoteAmt > 0) await mintTo(conn, issuer, quoteMint, quote, issuer, BigInt(quoteAmt * ONE));
+      await mintTo(
+        conn,
+        issuer,
+        baseMint,
+        base,
+        issuer,
+        BigInt(baseAmt * ONE),
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+      );
+    if (quoteAmt > 0)
+      await mintTo(
+        conn,
+        issuer,
+        quoteMint,
+        quote,
+        issuer,
+        BigInt(quoteAmt * ONE)
+      );
     return { kp, base, quote };
   }
 
   function pdas(id: number) {
     const [auction] = PublicKey.findProgramAddressSync(
-      [Buffer.from("auction"), issuer.publicKey.toBuffer(), new BN(id).toArrayLike(Buffer, "le", 8)],
+      [
+        Buffer.from("auction"),
+        issuer.publicKey.toBuffer(),
+        new BN(id).toArrayLike(Buffer, "le", 8),
+      ],
       program.programId
     );
     const [baseVault] = PublicKey.findProgramAddressSync(
@@ -124,7 +161,10 @@ describe("exit_day (synthetic orders)", () => {
         new BN(settleBy),
         tok(1),
         FEE_BPS,
-        roster.map((r) => ({ participant: r.p.kp.publicKey, allowance: r.allowance ?? 1 }))
+        roster.map((r) => ({
+          participant: r.p.kp.publicKey,
+          allowance: r.allowance ?? 1,
+        }))
       )
       .accountsPartial({
         issuer: issuer.publicKey,
@@ -191,7 +231,9 @@ describe("exit_day (synthetic orders)", () => {
         quoteTokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts(rem)
-      .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 })]);
+      .preInstructions([
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }),
+      ]);
   }
 
   async function settle(a: A, parties: Party[]) {
@@ -199,7 +241,16 @@ describe("exit_day (synthetic orders)", () => {
   }
 
   const bal = async (acct: PublicKey, program2022 = false) =>
-    Number((await getAccount(conn, acct, "confirmed", program2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID)).amount);
+    Number(
+      (
+        await getAccount(
+          conn,
+          acct,
+          "confirmed",
+          program2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+        )
+      ).amount
+    );
 
   async function expectErr(p: Promise<unknown>, code: string) {
     try {
@@ -228,7 +279,14 @@ describe("exit_day (synthetic orders)", () => {
       TOKEN_2022_PROGRAM_ID
     );
     quoteMint = await createMint(conn, issuer, issuer.publicKey, null, DEC);
-    feeAccount = (await getOrCreateAssociatedTokenAccount(conn, issuer, quoteMint, issuer.publicKey)).address;
+    feeAccount = (
+      await getOrCreateAssociatedTokenAccount(
+        conn,
+        issuer,
+        quoteMint,
+        issuer.publicKey
+      )
+    ).address;
   });
 
   it("Case 1: overlapping orders clear at one price", async () => {
@@ -346,7 +404,10 @@ describe("exit_day (synthetic orders)", () => {
     await waitUntil(a.deadline);
     const good = await settleRemaining(a, [s, b]);
     await expectErr(settleIx(a, good.slice(0, 2)).rpc(), "WrongAccounts");
-    await expectErr(settleIx(a, [good[2], good[3], good[0], good[1]]).rpc(), "WrongAccounts");
+    await expectErr(
+      settleIx(a, [good[2], good[3], good[0], good[1]]).rpc(),
+      "WrongAccounts"
+    );
     const swapped = [...good];
     swapped[3] = { pubkey: thief.quote, isSigner: false, isWritable: true };
     await expectErr(settleIx(a, swapped).rpc(), "WrongAccounts");
@@ -362,7 +423,16 @@ describe("exit_day (synthetic orders)", () => {
     await place(a, s1, SELL, price(0.9), tok(30));
     await place(a, s2, SELL, price(0.9), tok(30));
     await place(a, b, BUY, price(1.0), tok(30));
-    await freezeAccount(conn, issuer, s2.base, baseMint, issuer, [], undefined, TOKEN_2022_PROGRAM_ID);
+    await freezeAccount(
+      conn,
+      issuer,
+      s2.base,
+      baseMint,
+      issuer,
+      [],
+      undefined,
+      TOKEN_2022_PROGRAM_ID
+    );
     await waitUntil(a.deadline);
     await expectErr(settle(a, [s1, s2, b]), "frozen");
     await waitUntil(a.settleBy);
@@ -401,12 +471,21 @@ describe("exit_day (synthetic orders)", () => {
           BigInt(1e9),
           TOKEN_2022_PROGRAM_ID
         ),
-        createInitializeMintInstruction(mintKp.publicKey, DEC, issuer.publicKey, null, TOKEN_2022_PROGRAM_ID)
+        createInitializeMintInstruction(
+          mintKp.publicKey,
+          DEC,
+          issuer.publicKey,
+          null,
+          TOKEN_2022_PROGRAM_ID
+        )
       ),
       [issuer, mintKp]
     );
     const p = await party();
-    await expectErr(createAuction([{ p }], 6, 30, mintKp.publicKey), "UnsupportedExtension");
+    await expectErr(
+      createAuction([{ p }], 6, 30, mintKp.publicKey),
+      "UnsupportedExtension"
+    );
   });
 
   it("Capacity: 8 orders settle in one transaction (benchmark)", async () => {
@@ -418,8 +497,10 @@ describe("exit_day (synthetic orders)", () => {
     );
     const sp = [0.85, 0.9, 0.95, 1.0];
     const bp = [1.05, 1.0, 0.97, 0.92];
-    for (let i = 0; i < 4; i++) await place(a, sellers[i], SELL, price(sp[i]), tok(60 + i * 7));
-    for (let i = 0; i < 4; i++) await place(a, buyers[i], BUY, price(bp[i]), tok(55 + i * 11));
+    for (let i = 0; i < 4; i++)
+      await place(a, sellers[i], SELL, price(sp[i]), tok(60 + i * 7));
+    for (let i = 0; i < 4; i++)
+      await place(a, buyers[i], BUY, price(bp[i]), tok(55 + i * 11));
     await waitUntil(a.deadline);
     const rem = await settleRemaining(a, [...sellers, ...buyers]);
     const tx = await settleIx(a, rem).transaction();
@@ -427,12 +508,19 @@ describe("exit_day (synthetic orders)", () => {
     tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
     tx.sign(issuer);
     const size = tx.serialize().length;
-    const sig = await sendAndConfirmTransaction(conn, tx, [issuer], { commitment: "confirmed" });
-    const info = await conn.getTransaction(sig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    const sig = await sendAndConfirmTransaction(conn, tx, [issuer], {
+      commitment: "confirmed",
+    });
+    const info = await conn.getTransaction(sig, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
     const st = await program.account.auction.fetch(a.auction);
     console.log(
       `      8-order settle: ${size} bytes (legacy limit 1232, v1 limit 4096), ${info?.meta?.computeUnitsConsumed} CU, ` +
-        `price ${st.clearingPrice.toNumber() / ONE}, volume ${st.clearedVolume.toNumber() / ONE}`
+        `price ${st.clearingPrice.toNumber() / ONE}, volume ${
+          st.clearedVolume.toNumber() / ONE
+        }`
     );
     assert.isAtMost(size, 1232);
     await vaultsEmpty(a);

@@ -54,7 +54,7 @@ that has not been benchmarked yet.
 Rust unit tests (`clearing.rs`): full cross, no overlap, price priority, pro-rata remainder, exhaustive conservation
 check over small books.
 
-TypeScript integration tests (`tests/exit_day.ts`):
+TypeScript integration tests (`tests/cleara.ts`):
 
 1. Overlapping orders clear at one price (balances, fees, empty vaults, no double settlement)
 2. Not enough buyers: partial fill plus refund
@@ -72,10 +72,10 @@ Requires Anchor 0.32.1, Agave 4.x (`cargo-build-sbf` with platform-tools v1.54),
 
 ```bash
 yarn install
-cargo test --manifest-path programs/exit_day/Cargo.toml
-cargo-build-sbf --manifest-path programs/exit_day/Cargo.toml --sbf-out-dir target/deploy
-anchor idl build -o target/idl/exit_day.json -t target/types/exit_day.ts
-solana-test-validator --reset --bpf-program AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W target/deploy/exit_day.so
+cargo test --manifest-path programs/cleara/Cargo.toml
+cargo-build-sbf --manifest-path programs/cleara/Cargo.toml --sbf-out-dir target/deploy
+anchor idl build -o target/idl/cleara.json -t target/types/cleara.ts
+solana-test-validator --reset --bpf-program AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W target/deploy/cleara.so
 ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 ANCHOR_WALLET=~/.config/solana/id.json \
   yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts
 ```
