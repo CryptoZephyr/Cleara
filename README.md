@@ -68,13 +68,13 @@ TypeScript integration tests (`tests/cleara.ts`):
 
 ## Build and test
 
-Requires Anchor 0.32.1, Agave 4.x (`cargo-build-sbf` with platform-tools v1.54), Node 22, Yarn.
+Requires Anchor 0.32.1, a Rust 1.89 host toolchain for the IDL build, Agave 4.x (`cargo-build-sbf` with platform-tools v1.54), Node 22, Yarn.
 
 ```bash
 yarn install
 cargo test --manifest-path programs/cleara/Cargo.toml
 cargo-build-sbf --manifest-path programs/cleara/Cargo.toml --sbf-out-dir target/deploy
-anchor idl build -o target/idl/cleara.json -t target/types/cleara.ts
+RUSTUP_TOOLCHAIN=1.89.0 anchor idl build -o target/idl/cleara.json -t target/types/cleara.ts
 solana-test-validator --reset --bpf-program AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W target/deploy/cleara.so
 ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 ANCHOR_WALLET=~/.config/solana/id.json \
   yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts
