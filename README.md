@@ -1,57 +1,71 @@
 # Cleara
 
-**A clear moment to exit.** Scheduled liquidity events for hard-to-sell tokenized assets on Solana.
+**A clear moment to exit.**
 
-Live demo (Solana Devnet, synthetic assets): **https://cleara-ten.vercel.app**
+Some tokenized assets, like shares in a private company or a small real-estate token, are hard to sell. There are
+few buyers, and the ones who exist rarely show up at the same time as the sellers.
 
-> Hackathon prototype for the Colosseum Crypto World's Fair. Devnet only: the assets are synthetic and have no real value.
+Cleara gives those buyers and sellers a set time to meet. Think of it as a scheduled "selling day" for one asset:
+everyone places their order before the deadline, and then everyone who matches trades at the same price, all at once.
 
-![Cleara landing hero: one clearing event with funded buy and sell orders](docs/images/landing-hero.png)
+Try it: **https://cleara-ten.vercel.app**
 
-![Settled event with a single clearing price and per-order receipts](docs/images/settlement.png)
+> Hackathon prototype for the Colosseum Crypto World's Fair. It runs on Solana's test network (Devnet) with made-up
+> assets and test money, so nothing here has real value.
 
-## The problem
+![Cleara home page](docs/images/landing-hero.png)
 
-Tokenized private-company shares, credit and fund tokens often trade thinly. A holder who wants to sell right away
-into a shallow pool can move the price a lot, and buyers who might want the asset aren't in the market at the same moment.
+## How it works
 
-## How Cleara works
+1. **An event is scheduled** for one asset, with a deadline and a list of people approved to take part.
+2. **Approved buyers and sellers place orders** before the deadline: "I'll buy up to 50 at no more than 1.00 test dollars each" or
+   "I'll sell 40 at no less than 0.95". Their money or tokens are held in the event until it ends. Everyone can see the orders.
+3. **After the deadline, anyone can press "settle".** Cleara then finds the one price where the most buying and
+   selling can happen.
+4. **Everyone who matches trades at that price**, all in one step. Anything that didn't match goes back to its owner.
 
-An issuer or platform schedules a **liquidity event** for one asset, priced in one quote token.
+If nobody's prices meet, nothing trades and everyone gets their money or tokens back when the event is settled.
+If nobody settles it in time, the event expires and each order can be refunded one by one.
 
-1. **Collect.** Approved participants place funded buy and sell limit orders until a single deadline. The order book is public.
-2. **Clear.** After the deadline, anyone can trigger settlement. The program picks the one price that matches the most volume.
-3. **Settle.** Every matched order trades at that price in one all-or-nothing transaction. Unmatched amounts are returned.
-   If an event is never settled, anyone can refund each order after the settlement window, subject to the token's transfer rules.
+![A finished event: one price for everyone, with a receipt for each order](docs/images/settlement.png)
 
-Each event trades one asset. A platform can run any number of events for different assets side by side.
+## What Cleara can't promise
 
-## Try it (about 5 minutes)
+- It can't create buyers. If nobody wants the asset, an event won't change that.
+- The price is whatever the orders produce. It isn't a "fair value" estimate.
+- Orders are public, so people can see the book and wait until the last minute.
+- If the asset's issuer freezes or blocks a token, Cleara can't move it.
+
+## Try the demo (about 5 minutes)
 
 1. Open https://cleara-ten.vercel.app and click **Explore events**.
-2. Click **Connect wallet** and choose **Cleara demo wallet (Devnet)**. It's a throwaway wallet stored in your browser; no extension or sign-up needed.
-3. In **Try it · start your own 4-minute demo event**, pick a synthetic asset and a starting order book, then click **Start demo event**. The server creates an event with demo bots already in the book and adds your wallet to the approved list.
-4. Place a buy or sell order. If you're short, **Get demo funds** tops up synthetic tokens. Review the order, then sign.
-   Your order appears in the public order book and the provisional clearing price updates.
-5. Optionally cancel the order before the deadline and place it again.
-6. After the deadline, click **Settle event now**. The receipt shows the clearing price, your fill, what you paid or got, and the Explorer transaction.
-7. See **My orders**, the pre-seeded settled, partial-fill and expired events, and the **Developers** page.
+2. Click **Connect wallet** and choose **Cleara demo wallet (Devnet)**. It's a throwaway test wallet in your browser,
+   with no extension or sign-up.
+3. Under **Try it**, pick an asset and a starting order book, then click **Start demo event**. You get a 4-minute event with a few practice
+   orders already in it.
+4. Place a buy or sell order. If you need test tokens, click **Get demo funds**. Check the summary, then confirm.
+5. Watch the expected price update. You can cancel and place the order again before the deadline.
+6. When time runs out, click **Settle event now** and see your receipt.
+7. Open **My orders** to see your history, or look at the other example events (finished, partly filled, expired).
 
-| Review before signing | Public order book |
+| Check before you confirm | Your order in the public book |
 | --- | --- |
 | ![Order review](docs/images/order-review.png) | ![Order placed in the public book](docs/images/order-book.png) |
 
-![My orders after settlement](docs/images/my-orders.png)
+![My orders after an event](docs/images/my-orders.png)
 
-| Mobile landing | Mobile expired event |
+| Phone: home | Phone: expired event |
 | --- | --- |
-| <img src="docs/images/mobile-landing.png" width="300" alt="Mobile landing"> | <img src="docs/images/mobile-expired.png" width="300" alt="Mobile expired event"> |
+| <img src="docs/images/mobile-landing.png" width="300" alt="Mobile home page"> | <img src="docs/images/mobile-expired.png" width="300" alt="Mobile expired event"> |
 
-### Sell now vs join the event
+Each event page also shows what selling right now on Jupiter (a Solana trading app) would give for a similar real
+token, so you can compare. That quote comes from the real market and is kept clearly separate from the test event.
 
-The event page shows a read-only **Jupiter** quote for a comparable mainnet token next to the Devnet event result.
-They are labelled separately (`MAINNET QUOTE` and `DEVNET EVENT`). A quote isn't guaranteed liquidity, and synthetic
-Devnet assets don't inherit real market depth.
+---
+
+# For developers
+
+Everything below is the technical detail: addresses, code layout, setup and the program's rules.
 
 ## Devnet deployment
 
