@@ -4,7 +4,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { CONFIG } from "../../shared/config";
 import { SIDE_BUY, SIDE_SELL, clear } from "../../shared/cleara";
-import { explorerAddr, fetchAuction, phaseOf, type AuctionView } from "../lib/chain";
+import { explorerAddr, fetchAuction, phaseOf, watchAuction, type AuctionView } from "../lib/chain";
 import { useStore } from "../lib/store";
 import { eventLabel, pair } from "../lib/format";
 import { Page } from "../components/Shell";
@@ -58,8 +58,12 @@ export default function EventDetail() {
     setA(undefined);
     setError(null);
     load();
-    const t = setInterval(load, 8000);
-    return () => clearInterval(t);
+    const unwatch = address && validAddress(address) ? watchAuction(address, (next) => current.current === address && setA(next)) : () => undefined;
+    const t = setInterval(load, 30000);
+    return () => {
+      unwatch();
+      clearInterval(t);
+    };
   }, [load, address]);
 
   const after = useCallback(() => {

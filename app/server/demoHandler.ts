@@ -1,18 +1,20 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
-import { formatAtoms } from "../shared/cleara";
+import { SIDE_BUY, formatAtoms, parseAtoms, quoteCeil } from "../shared/cleara";
 import { CONFIG, assetByMint } from "../shared/config";
 import { SCENARIOS, type ScenarioId } from "../shared/scenarios";
 import { baseAta, botKeypair, createEvent, fundIxs, parseSecret, quoteAta, send } from "./operator";
+import { attestIx } from "./sas";
 
 const DEMO_OPEN_SECS = 240;
 const DEMO_SETTLE_SECS = 86400;
 const BASE_GRANT = "200";
-const QUOTE_GRANT = "500";
+const QUOTE_GRANT = "2";
 const SOL_GRANT = 0.02;
 const MIN_OPERATOR_SOL = 0.5;
+const OPERATOR_USDC_RESERVE = 8n;
 const MAX_BASE = 1000n;
-const MAX_QUOTE = 5000n;
+const MAX_QUOTE = 10n;
 
 class DemoError extends Error {
   status: number;
@@ -54,14 +56,17 @@ async function fundWallet(conn: Connection, wallet: PublicKey, mint: string, wan
   const qUnit = 10n ** BigInt(CONFIG.quoteDecimals);
   const [base, quote, sol] = await Promise.all([balance(conn, baseAta(asset, wallet)), balance(conn, quoteAta(wallet)), conn.getBalance(wallet, "confirmed")]);
   const baseGrant = grant(base, 50n * bUnit, atoms(want.base, MAX_BASE * bUnit), BigInt(BASE_GRANT) * bUnit);
-  const quoteGrant = grant(quote, 100n * qUnit, atoms(want.quote, MAX_QUOTE * qUnit), BigInt(QUOTE_GRANT) * qUnit);
+  const wanted = grant(quote, BigInt(QUOTE_GRANT) * qUnit, atoms(want.quote, MAX_QUOTE * qUnit), BigInt(QUOTE_GRANT) * qUnit);
+  const pool = (await balance(conn, quoteAta(operator.publicKey))) - OPERATOR_USDC_RESERVE * qUnit;
+  const quoteGrant = wanted > 0n && pool >= wanted ? wanted : 0n;
+  const quoteNote = wanted > 0n && quoteGrant === 0n ? ` The demo's test USDC pool is empty, so get ${CONFIG.quoteSymbol} for this wallet from ${CONFIG.quoteFaucet} (Solana Devnet).` : "";
   const needSol = sol < 0.01 * LAMPORTS_PER_SOL;
-  if (baseGrant === 0n && quoteGrant === 0n && !needSol) return { signature: null, message: "This wallet already has enough demo funds." };
+  if (baseGrant === 0n && quoteGrant === 0n && !needSol) return { signature: null, message: quoteNote.trim() || "This wallet already has enough demo funds." };
   const ixs = fundIxs(operator, asset, wallet, formatAtoms(baseGrant, asset.decimals), formatAtoms(quoteGrant, CONFIG.quoteDecimals));
   if (needSol) ixs.push(SystemProgram.transfer({ fromPubkey: operator.publicKey, toPubkey: wallet, lamports: Math.round(SOL_GRANT * LAMPORTS_PER_SOL) }));
   const signature = await send(conn, operator, ixs);
   const parts = [baseGrant > 0n && `${formatAtoms(baseGrant, asset.decimals)} ${asset.symbol}`, quoteGrant > 0n && `${formatAtoms(quoteGrant, CONFIG.quoteDecimals)} ${CONFIG.quoteSymbol}`, needSol && `${SOL_GRANT} devnet SOL`].filter(Boolean);
-  return { signature, message: `Sent ${parts.join(", ")} to this wallet (synthetic, Devnet only).` };
+  return { signature, message: `Sent ${parts.join(", ")} to this wallet (test tokens, Devnet only).${quoteNote}` };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -89,7 +94,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const scenario = SCENARIOS[body.scenario as ScenarioId];
       if (!asset || !scenario) return res.status(400).json({ error: "Unknown asset or scenario." });
       const operator = parseSecret(process.env.CLEARA_OPERATOR_SECRET);
+      const pool = await balance(conn, quoteAta(operator.publicKey));
+      const need = scenario.orders
+        .filter((o) => o.side === SIDE_BUY)
+        .reduce((n, o) => n + quoteCeil(parseAtoms(o.qty, asset.decimals)!, parseAtoms(o.price, CONFIG.quoteDecimals)!, asset.decimals), 0n);
+      if (pool < need)
+        throw new DemoError(`The demo's test USDC pool is too low to fund the bot buyers right now. Try the seeded events, or top up the operator from ${CONFIG.quoteFaucet}.`, 503);
       await fundWallet(conn, wallet, asset.mint);
+      const attest = await attestIx(conn, operator, wallet);
+      if (attest) await send(conn, operator, [attest]);
       const bots = [0, 1, 2, 3].map((i) => botKeypair(operator, i));
       const roster = [...bots.map((b) => ({ participant: b.publicKey, allowance: 1 })), { participant: wallet, allowance: 2 }];
       const ev = await createEvent(conn, operator, {

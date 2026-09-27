@@ -113,20 +113,50 @@ function toView(address: string, a: RawAuction): AuctionView {
   };
 }
 
+export const decodeAuction = (address: string, data: Buffer) => toView(address, program.coder.accounts.decode("auction", data) as RawAuction);
+
+const operatorFilter = [{ memcmp: { offset: 8, bytes: CONFIG.operator } }];
+
 export async function fetchAuctions(): Promise<AuctionView[]> {
-  const accounts = await connection.getProgramAccounts(PROGRAM_ID, {
-    commitment: "confirmed",
-    filters: [{ memcmp: { offset: 8, bytes: CONFIG.operator } }],
-  });
+  const accounts = await connection.getProgramAccounts(PROGRAM_ID, { commitment: "confirmed", filters: operatorFilter });
   return accounts
-    .map(({ pubkey, account }) => toView(pubkey.toBase58(), program.coder.accounts.decode("auction", account.data) as RawAuction))
+    .map(({ pubkey, account }) => decodeAuction(pubkey.toBase58(), account.data))
+    .filter((a) => a.quoteMint === CONFIG.quoteMint)
     .sort((x, y) => Number(y.id - x.id));
 }
 
 export async function fetchAuction(address: string): Promise<AuctionView | null> {
   const info = await connection.getAccountInfo(new PublicKey(address), "confirmed");
   if (!info || !info.owner.equals(PROGRAM_ID)) return null;
-  return toView(address, program.coder.accounts.decode("auction", info.data) as RawAuction);
+  return decodeAuction(address, info.data);
+}
+
+/** Streams every change to this operator's auction accounts over the RPC websocket. Returns an unsubscribe function. */
+export function watchAuctions(onChange: (a: AuctionView) => void): () => void {
+  const id = connection.onProgramAccountChange(
+    PROGRAM_ID,
+    ({ accountId, accountInfo }) => {
+      try {
+        const a = decodeAuction(accountId.toBase58(), accountInfo.data);
+        if (a.quoteMint === CONFIG.quoteMint) onChange(a);
+      } catch {
+        return;
+      }
+    },
+    { commitment: "confirmed", filters: operatorFilter }
+  );
+  return () => void connection.removeProgramAccountChangeListener(id).catch(() => undefined);
+}
+
+export function watchAuction(address: string, onChange: (a: AuctionView) => void): () => void {
+  const id = connection.onAccountChange(
+    new PublicKey(address),
+    (info) => {
+      if (info.owner.equals(PROGRAM_ID)) onChange(decodeAuction(address, info.data));
+    },
+    { commitment: "confirmed" }
+  );
+  return () => void connection.removeAccountChangeListener(id).catch(() => undefined);
 }
 
 export type Phase = "open" | "closing" | "awaiting" | "settled" | "expired";

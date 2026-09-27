@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { chainTimeOffset, fetchAuctions, type AuctionView } from "./chain";
+import { chainTimeOffset, fetchAuctions, watchAuctions, type AuctionView } from "./chain";
 
 interface Store {
   auctions: AuctionView[] | null;
@@ -32,11 +32,19 @@ export function AuctionsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
-    const poll = setInterval(refresh, 15000);
+    const unwatch = watchAuctions((a) =>
+      setAuctions((prev) => {
+        const list = prev ?? [];
+        const rest = list.filter((x) => x.address !== a.address);
+        return [a, ...rest].sort((x, y) => Number(y.id - x.id));
+      })
+    );
+    const poll = setInterval(refresh, 60000);
     const clock = setInterval(() => setTick(Date.now()), 1000);
     chainTimeOffset().then(setOffset).catch(() => undefined);
     const drift = setInterval(() => chainTimeOffset().then(setOffset).catch(() => undefined), 60000);
     return () => {
+      unwatch();
       clearInterval(poll);
       clearInterval(clock);
       clearInterval(drift);

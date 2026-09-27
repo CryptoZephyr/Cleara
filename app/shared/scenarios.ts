@@ -23,10 +23,10 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     title: "Crossing orders",
     summary: "Buy and sell limits overlap, so volume can clear at one price.",
     orders: [
-      { bot: 0, side: SIDE_SELL, price: "0.90", qty: "60" },
-      { bot: 1, side: SIDE_SELL, price: "0.95", qty: "40" },
-      { bot: 2, side: SIDE_BUY, price: "1.00", qty: "50" },
-      { bot: 3, side: SIDE_BUY, price: "0.96", qty: "30" },
+      { bot: 0, side: SIDE_SELL, price: "0.90", qty: "6" },
+      { bot: 1, side: SIDE_SELL, price: "0.95", qty: "4" },
+      { bot: 2, side: SIDE_BUY, price: "1.00", qty: "5" },
+      { bot: 3, side: SIDE_BUY, price: "0.96", qty: "3" },
     ],
   },
   partial: {
@@ -34,10 +34,10 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     title: "Partial fill",
     summary: "More tokens are offered than buyers want at overlapping prices.",
     orders: [
-      { bot: 0, side: SIDE_SELL, price: "0.88", qty: "120" },
-      { bot: 1, side: SIDE_SELL, price: "0.92", qty: "80" },
-      { bot: 2, side: SIDE_BUY, price: "0.93", qty: "70" },
-      { bot: 3, side: SIDE_BUY, price: "0.80", qty: "40" },
+      { bot: 0, side: SIDE_SELL, price: "0.88", qty: "12" },
+      { bot: 1, side: SIDE_SELL, price: "0.92", qty: "8" },
+      { bot: 2, side: SIDE_BUY, price: "0.93", qty: "7" },
+      { bot: 3, side: SIDE_BUY, price: "0.80", qty: "4" },
     ],
   },
   "no-overlap": {
@@ -45,10 +45,10 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     title: "No overlap",
     summary: "Every buyer's limit is below every seller's limit, so nothing can trade yet.",
     orders: [
-      { bot: 0, side: SIDE_SELL, price: "1.10", qty: "60" },
-      { bot: 1, side: SIDE_SELL, price: "1.05", qty: "40" },
-      { bot: 2, side: SIDE_BUY, price: "0.95", qty: "50" },
-      { bot: 3, side: SIDE_BUY, price: "0.90", qty: "30" },
+      { bot: 0, side: SIDE_SELL, price: "1.10", qty: "6" },
+      { bot: 1, side: SIDE_SELL, price: "1.05", qty: "4" },
+      { bot: 2, side: SIDE_BUY, price: "0.95", qty: "5" },
+      { bot: 3, side: SIDE_BUY, price: "0.90", qty: "3" },
     ],
   },
 };

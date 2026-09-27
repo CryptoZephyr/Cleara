@@ -7,7 +7,6 @@ export interface AssetConfig {
   kind: string;
   description: string;
   decimals: number;
-  reference: { symbol: string; name: string; mint: string; decimals: number };
 }
 
 export interface DevnetConfig {
@@ -18,8 +17,11 @@ export interface DevnetConfig {
   quoteMint: string;
   quoteSymbol: string;
   quoteDecimals: number;
+  quoteName: string;
+  quoteFaucet: string;
+  retiredQuoteMints: string[];
   feeAccount: string;
-  usdcMainnet: string;
+  sas?: { credential: string; schema: string };
   assets: AssetConfig[];
   bots: string[];
 }

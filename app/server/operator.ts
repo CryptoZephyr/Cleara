@@ -14,13 +14,14 @@ import {
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
   createMintToInstruction,
+  createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { createHash } from "node:crypto";
 import idl from "../src/idl/cleara.json" with { type: "json" };
 import type { Cleara } from "../src/idl/cleara";
 import { CONFIG, type AssetConfig } from "../shared/config";
-import { SIDE_EMPTY, auctionPda, parseAtoms, vaultPdas } from "../shared/cleara";
+import { SIDE_BUY, SIDE_EMPTY, auctionPda, parseAtoms, quoteCeil, vaultPdas } from "../shared/cleara";
 import { SCENARIOS, type ScenarioId, type SeedOrder } from "../shared/scenarios";
 
 export function parseSecret(raw: string): Keypair {
@@ -74,7 +75,34 @@ export function quoteAta(owner: PublicKey) {
   return getAssociatedTokenAddressSync(new PublicKey(CONFIG.quoteMint), owner, true, TOKEN_PROGRAM_ID);
 }
 
-/** Idempotently creates token accounts for `owner` and mints synthetic balances to them. */
+export async function tokenBalance(conn: Connection, ata: PublicKey) {
+  try {
+    return BigInt((await conn.getTokenAccountBalance(ata, "confirmed")).value.amount);
+  } catch {
+    return 0n;
+  }
+}
+
+export function quoteTransferIx(operator: Keypair, to: PublicKey, atoms: bigint) {
+  return createTransferCheckedInstruction(quoteAta(operator.publicKey), new PublicKey(CONFIG.quoteMint), to, operator.publicKey, atoms, CONFIG.quoteDecimals, [], TOKEN_PROGRAM_ID);
+}
+
+/** Moves idle test USDC from the demo bots back to the operator so it can be reused for the next event. */
+export async function sweepBots(conn: Connection, operator: Keypair) {
+  const ixs: TransactionInstruction[] = [];
+  const signers: Keypair[] = [];
+  for (let i = 0; i < 4; i++) {
+    const bot = botKeypair(operator, i);
+    const ata = quoteAta(bot.publicKey);
+    const have = await tokenBalance(conn, ata);
+    if (have === 0n) continue;
+    ixs.push(createTransferCheckedInstruction(ata, new PublicKey(CONFIG.quoteMint), quoteAta(operator.publicKey), bot.publicKey, have, CONFIG.quoteDecimals, [], TOKEN_PROGRAM_ID));
+    signers.push(bot);
+  }
+  if (ixs.length) await send(conn, operator, ixs, signers);
+}
+
+/** Idempotently creates token accounts for `owner`, mints synthetic base tokens and sends test USDC from the operator's balance. */
 export function fundIxs(operator: Keypair, asset: AssetConfig, owner: PublicKey, base: string, quote: string) {
   const baseMint = new PublicKey(asset.mint);
   const quoteMint = new PublicKey(CONFIG.quoteMint);
@@ -89,7 +117,7 @@ export function fundIxs(operator: Keypair, asset: AssetConfig, owner: PublicKey,
   if (baseAtoms > 0n)
     ixs.push(createMintToInstruction(baseMint, b, operator.publicKey, baseAtoms, [], TOKEN_2022_PROGRAM_ID));
   if (quoteAtoms > 0n)
-    ixs.push(createMintToInstruction(quoteMint, q, operator.publicKey, quoteAtoms, [], TOKEN_PROGRAM_ID));
+    ixs.push(quoteTransferIx(operator, q, quoteAtoms));
   return ixs;
 }
 
@@ -137,6 +165,22 @@ export async function createEvent(conn: Connection, operator: Keypair, o: Create
     })
     .instruction();
   await send(conn, operator, [createIx]);
+
+  await sweepBots(conn, operator);
+  const need = new Map<number, bigint>();
+  for (const s of o.seed)
+    if (s.side === SIDE_BUY)
+      need.set(s.bot, (need.get(s.bot) ?? 0n) + quoteCeil(parseAtoms(s.qty, o.asset.decimals)!, parseAtoms(s.price, CONFIG.quoteDecimals)!, o.asset.decimals));
+  const topUps: TransactionInstruction[] = [];
+  for (const i of new Set(o.seed.map((s) => s.bot))) {
+    const bot = botKeypair(operator, i).publicKey;
+    const ata = quoteAta(bot);
+    topUps.push(createAssociatedTokenAccountIdempotentInstruction(operator.publicKey, ata, bot, new PublicKey(CONFIG.quoteMint), TOKEN_PROGRAM_ID));
+    const amount = need.get(i) ?? 0n;
+    const have = await tokenBalance(conn, ata);
+    if (have < amount) topUps.push(quoteTransferIx(operator, ata, amount - have));
+  }
+  if (topUps.length) await send(conn, operator, topUps);
 
   for (let i = 0; i < o.seed.length; i += 2) {
     const chunk = o.seed.slice(i, i + 2);
