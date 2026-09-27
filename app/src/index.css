@@ -177,7 +177,7 @@ body {
 @keyframes stamp { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .point-in { animation: point-in 600ms ease-out 200ms both; }
 @keyframes point-in { from { opacity: 0; } to { opacity: 1; } }
-.paper-grain { background-image: radial-gradient(rgba(16, 37, 30, 0.045) 1px, transparent 1px); background-size: 5px 5px; }
+.paper-grain { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.063 0 0 0 0 0.145 0 0 0 0 0.118 0.22 0 0 0 -0.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"); }
 .chart-line { transition: d 240ms ease-out; }
 
 @media (prefers-reduced-motion: reduce) {

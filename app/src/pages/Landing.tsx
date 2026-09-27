@@ -108,9 +108,28 @@ function HeroVisual() {
 
 function PaperLandscape() {
   return (
-    <svg aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full text-emerald opacity-[0.12] max-md:hidden" viewBox="0 0 1440 96" preserveAspectRatio="none" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M0 70 C 160 40 300 40 460 62 S 760 88 920 58 S 1240 30 1440 56" />
-      <path d="M0 86 C 200 66 380 70 560 82 S 900 96 1100 76 S 1340 66 1440 74" />
+    <svg aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[clamp(160px,32vh,300px)] w-full max-md:hidden" viewBox="0 0 1440 300" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <filter id="landscape-grain" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" stitchTiles="stitch" />
+          <feColorMatrix values="0 0 0 0 0.063  0 0 0 0 0.145  0 0 0 0 0.118  2.4 0 0 0 -1.25" />
+        </filter>
+        <filter id="landscape-fleck" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="1" seed="7" stitchTiles="stitch" />
+          <feColorMatrix values="0 0 0 0 0.973  0 0 0 0 0.906  0 0 0 0 0.788  2.6 0 0 0 -1.5" />
+        </filter>
+        <mask id="landscape-land"><path fill="#fff" d="M0 185 C80 160 160 150 250 165 S420 150 520 175 S700 160 820 178 S1100 165 1250 180 S1400 172 1440 176 V300 H0 Z" /></mask>
+        <mask id="landscape-dark"><path fill="#fff" d="M0 95 C50 90 100 110 160 140 S260 200 360 225 S520 245 640 250 S900 250 1100 256 S1360 252 1440 256 V300 H0 Z" /></mask>
+      </defs>
+      <circle cx="400" cy="175" r="64" fill="#d5a62e" opacity="0.6" />
+      <path fill="#9aae9f" d="M0 185 C80 160 160 150 250 165 S420 150 520 175 S700 160 820 178 S1100 165 1250 180 S1400 172 1440 176 V300 H0 Z" />
+      <path fill="#52645d" d="M0 150 C70 140 140 165 220 190 S360 205 470 198 S640 210 760 214 S1000 205 1160 212 S1380 206 1440 210 V300 H0 Z" />
+      <path fill="#064e3b" opacity="0.85" d="M760 300 C860 250 980 222 1100 226 S1320 236 1440 220 V300 Z" />
+      <path fill="#064e3b" d="M0 95 C50 90 100 110 160 140 S260 200 360 225 S520 245 640 250 S900 250 1100 256 S1360 252 1440 256 V300 H0 Z" />
+      <path fill="#f8e7c9" d="M576 300 C566 297 534 288 516 282 C498 276 468 269 466 262 C464 255 504 247 505 240 C506 233 476 228 474 222 C472 216 488 209 491 206 L497 206 C496 209 484 216 490 222 C496 228 530 233 535 240 C540 247 506 255 518 262 C530 269 573 276 604 282 C635 288 687 297 704 300 Z" />
+      <path fill="#10251e" d="M0 262 C160 250 300 272 460 278 S800 290 1060 284 S1320 276 1440 282 V300 H0 Z" />
+      <rect width="1440" height="300" filter="url(#landscape-grain)" mask="url(#landscape-land)" opacity="0.45" />
+      <rect width="1440" height="300" filter="url(#landscape-fleck)" mask="url(#landscape-dark)" opacity="0.4" />
     </svg>
   );
 }
@@ -172,7 +191,7 @@ export default function Landing() {
   return (
     <>
       <section className="paper-grain relative overflow-hidden border-b-2 border-emerald bg-champagne">
-        <div className="relative z-10 mx-auto grid min-h-[calc(100svh-60px)] max-w-[1344px] grid-cols-12 items-center gap-8 px-8 py-12 max-lg:min-h-0 max-md:px-4 max-md:py-10">
+        <div className="relative z-10 mx-auto grid min-h-[calc(100svh-60px)] max-w-[1344px] grid-cols-12 items-center gap-8 px-8 pt-12 pb-[clamp(120px,22vh,220px)] max-lg:min-h-0 max-md:px-4 max-md:py-10">
           <div className="col-span-5 flex flex-col gap-5 max-lg:col-span-12">
             <p className="m-0 label text-devnet">Synthetic assets · Solana Devnet</p>
             <h1 className="m-0 text-[72px] leading-[74px] font-[650] tracking-[-0.03em] max-xl:text-[64px] max-xl:leading-[66px] max-sm:text-[44px] max-sm:leading-[48px]">A clear moment to exit.</h1>
