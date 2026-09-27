@@ -141,7 +141,7 @@ export default function Landing() {
           <div className="col-span-7 grid grid-cols-3 gap-4 max-md:grid-cols-1 max-lg:col-span-12">
             {[
               ["Interest is scattered", "A holder wants out on Tuesday; a buyer shows up on Friday. Neither finds the other in an empty order book."],
-              ["Instant exits are costly", "Selling into a shallow pool can move the price a lot, especially for private-company, credit and fund tokens."],
+              ["Selling right away is costly", "Selling into a shallow pool can move the price a lot, especially for private-company, credit and fund tokens."],
               ["Results are hard to audit", "Off-venue matches rarely show who was eligible, which orders counted, or why a price was chosen."],
             ].map(([t, b]) => (
               <div key={t} className="rounded-[6px] border-2 border-emerald bg-cream p-4">

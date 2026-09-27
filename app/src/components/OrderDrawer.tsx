@@ -11,11 +11,15 @@ import { Notice, SideTag } from "./ui";
 
 function Overlay({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLElement>("button, input")?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
       if (e.key === "Tab" && ref.current) {
         const f = Array.from(ref.current.querySelectorAll<HTMLElement>("button:not(:disabled), input, a[href]"));
         if (f.length === 0) return;
@@ -35,7 +39,7 @@ function Overlay({ title, onClose, children, wide }: { title: string; onClose: (
       document.removeEventListener("keydown", onKey);
       prev?.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-ink/35" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
@@ -243,7 +247,7 @@ export function CancelDialog({ a, slot, onClose, onDone }: { a: AuctionView; slo
   const o = a.orders[slot];
   const sym = a.asset?.symbol ?? "";
   const [st, setSt] = useState<{ kind: "idle" | "signing" } | { kind: "done"; sig: string } | { kind: "error"; msg: string }>({ kind: "idle" });
-  const back = o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, o.escrowed)} ${sym}`;
+  const [back] = useState(() => (o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, o.escrowed)} ${sym}`));
   return (
     <Overlay title={`Cancel order #${slot + 1}`} onClose={onClose}>
       <div className="flex flex-col gap-4" aria-live="polite">

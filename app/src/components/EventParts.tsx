@@ -34,7 +34,7 @@ export function depth(a: AuctionView) {
 
 export function EventCard({ a, now, featured }: { a: AuctionView; now: number; featured?: boolean }) {
   const phase = phaseOf(a, now);
-  const c = a.status === 1 ? { price: a.clearingPrice, volume: a.clearedVolume, fills: [] } : clear(a.orders);
+  const c = a.status === 1 ? { price: a.clearingPrice, volume: a.clearedVolume, fills: [] } : phase === "expired" ? { price: 0n, volume: 0n, fills: [] } : clear(a.orders);
   const d = depth(a);
   const sym = a.asset?.symbol ?? "—";
   return (
@@ -56,8 +56,8 @@ export function EventCard({ a, now, featured }: { a: AuctionView; now: number; f
           <Stat label="Funded buy interest" value={`${fmtBase(a, d.buyQty)} ${sym}`} />
           <Stat label="Funded sell interest" value={`${fmtBase(a, d.sellQty)} ${sym}`} />
           <Stat
-            label={a.status === 1 ? "Clearing price" : "Provisional price"}
-            value={c.volume > 0n ? `${fmtPrice(a, c.price)} ${CONFIG.quoteSymbol}` : "No overlap"}
+            label={a.status === 1 ? "Clearing price" : phase === "expired" ? "Result" : "Provisional price"}
+            value={phase === "expired" ? "Nothing traded" : c.volume > 0n ? `${fmtPrice(a, c.price)} ${CONFIG.quoteSymbol}` : "No overlap"}
           />
           <Stat label="Orders · participants" value={`${d.count} of ${MAX_ORDERS} · ${a.roster.length}`} />
         </div>
