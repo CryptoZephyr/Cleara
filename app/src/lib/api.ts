@@ -14,6 +14,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return data;
 }
 
-export const requestFunds = (wallet: string, asset: string) => post<FundResult>("/api/demo", { action: "fund", wallet, asset });
+export const requestFunds = (wallet: string, asset: string, need: { base?: bigint; quote?: bigint } = {}) =>
+  post<FundResult>("/api/demo", { action: "fund", wallet, asset, base: need.base?.toString(), quote: need.quote?.toString() });
 export const requestDemoEvent = (wallet: string, asset: string, scenario: string) =>
   post<DemoEventResult>("/api/demo", { action: "event", wallet, asset, scenario });

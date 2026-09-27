@@ -49048,6 +49048,52 @@ var require_node = __commonJS({
 // server/demoHandler.ts
 var import_web39 = __toESM(require_index_cjs(), 1);
 
+// shared/cleara.ts
+var import_web3 = __toESM(require_index_cjs(), 1);
+var PROGRAM_ID = new import_web3.PublicKey("AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W");
+var SIDE_BUY = 1;
+var SIDE_SELL = 2;
+var enc = new TextEncoder();
+function u64le(n) {
+  const b = new Uint8Array(8);
+  new DataView(b.buffer).setBigUint64(0, n, true);
+  return b;
+}
+function auctionPda(issuer, id) {
+  return import_web3.PublicKey.findProgramAddressSync(
+    [enc.encode("auction"), issuer.toBytes(), u64le(id)],
+    PROGRAM_ID
+  )[0];
+}
+function vaultPdas(auction) {
+  const [baseVault] = import_web3.PublicKey.findProgramAddressSync(
+    [enc.encode("base_vault"), auction.toBytes()],
+    PROGRAM_ID
+  );
+  const [quoteVault] = import_web3.PublicKey.findProgramAddressSync(
+    [enc.encode("quote_vault"), auction.toBytes()],
+    PROGRAM_ID
+  );
+  return { baseVault, quoteVault };
+}
+var scale = (decimals) => 10n ** BigInt(decimals);
+function formatAtoms(atoms2, decimals, maxFrac = decimals) {
+  const neg = atoms2 < 0n;
+  const a = neg ? -atoms2 : atoms2;
+  const s = scale(decimals);
+  const whole = a / s;
+  const frac = (a % s).toString().padStart(decimals, "0").slice(0, maxFrac).replace(/0+$/, "");
+  const w = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${neg ? "-" : ""}${w}${frac ? "." + frac : ""}`;
+}
+function parseAtoms(input, decimals) {
+  const t = input.trim();
+  if (!/^\d+(\.\d*)?$|^\.\d+$/.test(t)) return null;
+  const [w, f = ""] = t.split(".");
+  if (f.length > decimals) return null;
+  return BigInt(w || "0") * scale(decimals) + BigInt((f + "0".repeat(decimals)).slice(0, decimals) || "0");
+}
+
 // src/config/devnet.json
 var devnet_default = {
   cluster: "devnet",
@@ -49114,43 +49160,6 @@ var devnet_default = {
 // shared/config.ts
 var CONFIG = devnet_default;
 var assetByMint = (mint) => CONFIG.assets.find((a) => a.mint === mint);
-
-// shared/cleara.ts
-var import_web3 = __toESM(require_index_cjs(), 1);
-var PROGRAM_ID = new import_web3.PublicKey("AnVHa4HHZHhUTepWnSGwxDLUEmkKyAuD6sHeKPtTSY6W");
-var SIDE_BUY = 1;
-var SIDE_SELL = 2;
-var enc = new TextEncoder();
-function u64le(n) {
-  const b = new Uint8Array(8);
-  new DataView(b.buffer).setBigUint64(0, n, true);
-  return b;
-}
-function auctionPda(issuer, id) {
-  return import_web3.PublicKey.findProgramAddressSync(
-    [enc.encode("auction"), issuer.toBytes(), u64le(id)],
-    PROGRAM_ID
-  )[0];
-}
-function vaultPdas(auction) {
-  const [baseVault] = import_web3.PublicKey.findProgramAddressSync(
-    [enc.encode("base_vault"), auction.toBytes()],
-    PROGRAM_ID
-  );
-  const [quoteVault] = import_web3.PublicKey.findProgramAddressSync(
-    [enc.encode("quote_vault"), auction.toBytes()],
-    PROGRAM_ID
-  );
-  return { baseVault, quoteVault };
-}
-var scale = (decimals) => 10n ** BigInt(decimals);
-function parseAtoms(input, decimals) {
-  const t = input.trim();
-  if (!/^\d+(\.\d*)?$|^\.\d+$/.test(t)) return null;
-  const [w, f = ""] = t.split(".");
-  if (f.length > decimals) return null;
-  return BigInt(w || "0") * scale(decimals) + BigInt((f + "0".repeat(decimals)).slice(0, decimals) || "0");
-}
 
 // shared/scenarios.ts
 var SCENARIOS = {
@@ -51867,7 +51876,8 @@ async function send(conn, payer, ixs, signers = []) {
   tx.recentBlockhash = blockhash;
   tx.sign(payer, ...signers);
   const sig = await conn.sendRawTransaction(tx.serialize(), { maxRetries: 5 });
-  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+  const result = await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+  if (result.value.err) throw new Error(`Transaction failed onchain: ${JSON.stringify(result.value.err)}`);
   return sig;
 }
 function baseAta(asset, owner) {
@@ -51961,6 +51971,16 @@ var DEMO_SETTLE_SECS = 86400;
 var BASE_GRANT = "200";
 var QUOTE_GRANT = "500";
 var SOL_GRANT = 0.02;
+var MIN_OPERATOR_SOL = 0.5;
+var MAX_BASE = 1000n;
+var MAX_QUOTE = 5000n;
+var DemoError = class extends Error {
+  status;
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+};
 async function balance(conn, ata) {
   try {
     return BigInt((await conn.getTokenAccountBalance(ata, "confirmed")).value.amount);
@@ -51968,25 +51988,47 @@ async function balance(conn, ata) {
     return 0n;
   }
 }
-async function fundWallet(conn, wallet, mint) {
+function atoms(raw, cap) {
+  if (typeof raw !== "string" || !/^\d{1,30}$/.test(raw)) return 0n;
+  const n = BigInt(raw);
+  return n > cap ? cap : n;
+}
+function grant(have, floor, want, step) {
+  const target = want > floor ? want : floor;
+  if (have >= target) return 0n;
+  const gap = target - have;
+  return gap > step ? gap : step;
+}
+async function fundWallet(conn, wallet, mint, want = {}) {
   const operator = parseSecret(process.env.CLEARA_OPERATOR_SECRET);
   const asset = assetByMint(mint);
   if (!asset) throw new Error("Unknown synthetic asset.");
+  const operatorSol = await conn.getBalance(operator.publicKey, "confirmed");
+  if (operatorSol < MIN_OPERATOR_SOL * import_web39.LAMPORTS_PER_SOL) throw new DemoError("The demo operator is low on devnet SOL. Please try again later.", 503);
+  const bUnit = 10n ** BigInt(asset.decimals);
+  const qUnit = 10n ** BigInt(CONFIG.quoteDecimals);
   const [base, quote, sol] = await Promise.all([balance(conn, baseAta(asset, wallet)), balance(conn, quoteAta(wallet)), conn.getBalance(wallet, "confirmed")]);
-  const needBase = base < 50n * 10n ** BigInt(asset.decimals);
-  const needQuote = quote < 100n * 10n ** BigInt(CONFIG.quoteDecimals);
+  const baseGrant = grant(base, 50n * bUnit, atoms(want.base, MAX_BASE * bUnit), BigInt(BASE_GRANT) * bUnit);
+  const quoteGrant = grant(quote, 100n * qUnit, atoms(want.quote, MAX_QUOTE * qUnit), BigInt(QUOTE_GRANT) * qUnit);
   const needSol = sol < 0.01 * import_web39.LAMPORTS_PER_SOL;
-  if (!needBase && !needQuote && !needSol) return { signature: null, message: "This wallet already has enough demo funds." };
-  const ixs = fundIxs(operator, asset, wallet, needBase ? BASE_GRANT : "0", needQuote ? QUOTE_GRANT : "0");
+  if (baseGrant === 0n && quoteGrant === 0n && !needSol) return { signature: null, message: "This wallet already has enough demo funds." };
+  const ixs = fundIxs(operator, asset, wallet, formatAtoms(baseGrant, asset.decimals), formatAtoms(quoteGrant, CONFIG.quoteDecimals));
   if (needSol) ixs.push(import_web39.SystemProgram.transfer({ fromPubkey: operator.publicKey, toPubkey: wallet, lamports: Math.round(SOL_GRANT * import_web39.LAMPORTS_PER_SOL) }));
   const signature = await send(conn, operator, ixs);
-  const parts = [needBase && `${BASE_GRANT} ${asset.symbol}`, needQuote && `${QUOTE_GRANT} ${CONFIG.quoteSymbol}`, needSol && `${SOL_GRANT} devnet SOL`].filter(Boolean);
+  const parts = [baseGrant > 0n && `${formatAtoms(baseGrant, asset.decimals)} ${asset.symbol}`, quoteGrant > 0n && `${formatAtoms(quoteGrant, CONFIG.quoteDecimals)} ${CONFIG.quoteSymbol}`, needSol && `${SOL_GRANT} devnet SOL`].filter(Boolean);
   return { signature, message: `Sent ${parts.join(", ")} to this wallet (synthetic, Devnet only).` };
 }
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Use POST." });
   if (!process.env.CLEARA_OPERATOR_SECRET) return res.status(503).json({ error: "The demo operator is not configured on this deployment." });
-  const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+  let body;
+  try {
+    const parsed = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    if (!parsed || typeof parsed !== "object") throw new Error("empty");
+    body = parsed;
+  } catch {
+    return res.status(400).json({ error: "Send a JSON request body." });
+  }
   let wallet;
   try {
     wallet = new import_web39.PublicKey(body.wallet ?? "");
@@ -51995,7 +52037,7 @@ async function handler(req, res) {
   }
   const conn = new import_web39.Connection(process.env.RPC_URL ?? CONFIG.rpc, "confirmed");
   try {
-    if (body.action === "fund") return res.json(await fundWallet(conn, wallet, body.asset ?? ""));
+    if (body.action === "fund") return res.json(await fundWallet(conn, wallet, body.asset ?? "", { base: body.base, quote: body.quote }));
     if (body.action === "event") {
       const asset = assetByMint(body.asset ?? "");
       const scenario = SCENARIOS[body.scenario];
@@ -52017,6 +52059,7 @@ async function handler(req, res) {
     }
     return res.status(400).json({ error: "Unknown action." });
   } catch (e) {
+    if (e instanceof DemoError) return res.status(e.status).json({ error: e.message });
     const msg = e instanceof Error ? e.message : String(e);
     return res.status(502).json({ error: /429/.test(msg) ? "Public Devnet RPC is rate-limiting. Try again in a few seconds." : `Devnet request failed: ${msg.slice(0, 200)}` });
   }

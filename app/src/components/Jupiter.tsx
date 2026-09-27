@@ -98,6 +98,7 @@ export function MainnetComparison({ a, clearing, now }: { a: AuctionView; cleari
             value={
               a.status === 1
                 ? a.clearedVolume > 0n ? `${fmtPrice(a, a.clearingPrice)} ${CONFIG.quoteSymbol}` : "No overlap"
+                : now > a.settleBy ? "Expired · nothing traded"
                 : clearing.volume > 0n ? `${fmtPrice(a, clearing.price)} ${CONFIG.quoteSymbol}` : "No executable price yet"
             }
             sub={`per ${sym}`}

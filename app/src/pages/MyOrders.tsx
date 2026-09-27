@@ -37,7 +37,8 @@ export default function MyOrders() {
   const approved = (auctions ?? []).filter((a) => a.roster.some((r) => r.participant === me) && !rows.some((x) => x.a.address === a.address));
   return (
     <Page>
-      <h1 className="m-0 mb-6 text-[34px] leading-[38px] font-[650]">My orders</h1>
+      <h1 className="m-0 mb-2 text-[34px] leading-[38px] font-[650]">My orders</h1>
+      <p className="m-0 mb-6 text-[13px] text-muted">Shows orders currently stored in event accounts. A refund or cancellation clears the slot onchain, so that order leaves this list; its transactions remain visible on Solana Explorer.</p>
       {!auctions ? (
         <SkeletonRows rows={4} />
       ) : rows.length === 0 ? (

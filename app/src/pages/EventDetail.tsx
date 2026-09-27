@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
@@ -37,24 +37,31 @@ export default function EventDetail() {
   const [cancelSlot, setCancelSlot] = useState<number | null>(null);
   const [connect, setConnect] = useState(false);
 
+  const current = useRef(address);
   const load = useCallback(async () => {
     if (!validAddress(address)) {
       setA(null);
       return;
     }
     try {
-      setA(await fetchAuction(address!));
+      const next = await fetchAuction(address!);
+      if (current.current !== address) return;
+      setA(next);
       setError(null);
     } catch (e) {
+      if (current.current !== address) return;
       setError(e instanceof Error ? e.message : String(e));
     }
   }, [address]);
 
   useEffect(() => {
+    current.current = address;
+    setA(undefined);
+    setError(null);
     load();
     const t = setInterval(load, 8000);
     return () => clearInterval(t);
-  }, [load]);
+  }, [load, address]);
 
   const after = useCallback(() => {
     setTimeout(() => {
@@ -82,13 +89,14 @@ export default function EventDetail() {
     );
 
   const phase = phaseOf(a, now);
-  const clearing = clear(a.orders);
+  const clearing = phaseOf(a, now) === "expired" ? { price: 0n, volume: 0n, fills: a.orders.map(() => 0n) } : clear(a.orders);
   const sym = a.asset?.symbol ?? "";
   const open = phase === "open" || phase === "closing";
   const roster = me ? a.roster.find((r) => r.participant === me) : undefined;
 
   return (
     <Page>
+      {error && <div className="mb-4"><Notice tone="danger" title="Could not refresh this event from Devnet">{error}</Notice></div>}
       <nav aria-label="Breadcrumb" className="mb-3 text-[13px]"><Link to="/events" className="text-ink">Events</Link> / <span className="text-muted">{eventLabel(a)}</span></nav>
       <div className="sticky top-[88px] z-30 -mx-2 mb-6 px-2 max-md:top-[84px]">
         <div className="window-bar rounded-[6px] border-2 border-emerald">

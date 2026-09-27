@@ -108,7 +108,7 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
     if (!me) return;
     setFunding("Requesting synthetic tokens and devnet SOL…");
     try {
-      const r = await requestFunds(me, a.baseMint);
+      const r = await requestFunds(me, a.baseMint, locked === null ? {} : side === SIDE_BUY ? { quote: locked } : { base: locked });
       setFunding(r.message);
       await loadBal();
     } catch (e) {

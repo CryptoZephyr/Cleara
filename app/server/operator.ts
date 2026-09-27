@@ -61,7 +61,8 @@ export async function send(conn: Connection, payer: Keypair, ixs: TransactionIns
   tx.recentBlockhash = blockhash;
   tx.sign(payer, ...signers);
   const sig = await conn.sendRawTransaction(tx.serialize(), { maxRetries: 5 });
-  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+  const result = await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+  if (result.value.err) throw new Error(`Transaction failed onchain: ${JSON.stringify(result.value.err)}`);
   return sig;
 }
 
