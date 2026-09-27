@@ -203,3 +203,7 @@ ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 ANCHOR_WALLET=~/.config/solana/id.json
 
 Checking who may hold a token is not permission to operate a securities market. A production launch requires a
 licensed partner and legal review. This repository is a technical prototype only.
+
+## License
+
+[MIT](LICENSE)
