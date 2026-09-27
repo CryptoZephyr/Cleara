@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { CONFIG } from "../../shared/config";
 import { SIDE_BUY, SIDE_SELL, clear } from "../../shared/cleara";
-import { explorerAddr, fetchAuction, phaseOf, watchAuction, type AuctionView } from "../lib/chain";
+import { explorerAddr, fetchAuction, phaseOf, quoteSym, watchAuction, type AuctionView } from "../lib/chain";
 import { useStore } from "../lib/store";
 import { eventLabel, pair } from "../lib/format";
 import { Page } from "../components/Shell";
@@ -134,7 +133,7 @@ export default function EventDetail() {
               clearing={phase === "settled" ? { price: a.clearingPrice, volume: a.clearedVolume, fills: [] } : clearing}
               baseDecimals={a.baseDecimals}
               quoteDecimals={a.quoteDecimals}
-              quoteSymbol={CONFIG.quoteSymbol}
+              quoteSymbol={quoteSym(a)}
               baseSymbol={sym}
             />
           </Window>

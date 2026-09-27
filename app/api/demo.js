@@ -59888,7 +59888,7 @@ var require_attestation = __commonJS({
     exports.getAttestationEncoder = getAttestationEncoder;
     exports.getAttestationDecoder = getAttestationDecoder;
     exports.getAttestationCodec = getAttestationCodec;
-    exports.decodeAttestation = decodeAttestation;
+    exports.decodeAttestation = decodeAttestation2;
     exports.fetchAttestation = fetchAttestation;
     exports.fetchMaybeAttestation = fetchMaybeAttestation;
     exports.fetchAllAttestation = fetchAllAttestation;
@@ -59921,7 +59921,7 @@ var require_attestation = __commonJS({
     function getAttestationCodec() {
       return (0, kit_1.combineCodec)(getAttestationEncoder(), getAttestationDecoder());
     }
-    function decodeAttestation(encodedAccount) {
+    function decodeAttestation2(encodedAccount) {
       return (0, kit_1.decodeAccount)(encodedAccount, getAttestationDecoder());
     }
     async function fetchAttestation(rpc, address2, config) {
@@ -59931,7 +59931,7 @@ var require_attestation = __commonJS({
     }
     async function fetchMaybeAttestation(rpc, address2, config) {
       const maybeAccount = await (0, kit_1.fetchEncodedAccount)(rpc, address2, config);
-      return decodeAttestation(maybeAccount);
+      return decodeAttestation2(maybeAccount);
     }
     async function fetchAllAttestation(rpc, addresses, config) {
       const maybeAccounts = await fetchAllMaybeAttestation(rpc, addresses, config);
@@ -59940,7 +59940,7 @@ var require_attestation = __commonJS({
     }
     async function fetchAllMaybeAttestation(rpc, addresses, config) {
       const maybeAccounts = await (0, kit_1.fetchEncodedAccounts)(rpc, addresses, config);
-      return maybeAccounts.map((maybeAccount) => decodeAttestation(maybeAccount));
+      return maybeAccounts.map((maybeAccount) => decodeAttestation2(maybeAccount));
     }
   }
 });
@@ -60620,7 +60620,7 @@ var require_closeAttestation = __commonJS({
     exports.getCloseAttestationInstructionDataEncoder = getCloseAttestationInstructionDataEncoder;
     exports.getCloseAttestationInstructionDataDecoder = getCloseAttestationInstructionDataDecoder;
     exports.getCloseAttestationInstructionDataCodec = getCloseAttestationInstructionDataCodec;
-    exports.getCloseAttestationInstruction = getCloseAttestationInstruction;
+    exports.getCloseAttestationInstruction = getCloseAttestationInstruction2;
     exports.parseCloseAttestationInstruction = parseCloseAttestationInstruction;
     var kit_1 = require_index_node40();
     var programs_1 = require_programs();
@@ -60638,7 +60638,7 @@ var require_closeAttestation = __commonJS({
     function getCloseAttestationInstructionDataCodec() {
       return (0, kit_1.combineCodec)(getCloseAttestationInstructionDataEncoder(), getCloseAttestationInstructionDataDecoder());
     }
-    function getCloseAttestationInstruction(input, config) {
+    function getCloseAttestationInstruction2(input, config) {
       const programAddress = config?.programAddress ?? programs_1.SOLANA_ATTESTATION_SERVICE_PROGRAM_ADDRESS;
       const originalAccounts = {
         payer: { value: input.payer ?? null, isWritable: true },
@@ -66663,6 +66663,19 @@ var enc2 = new TextEncoder();
 function attestationPda(credential, schema, wallet) {
   return import_web310.PublicKey.findProgramAddressSync([enc2.encode("attestation"), credential.toBytes(), schema.toBytes(), wallet.toBytes()], SAS_PROGRAM_ID)[0];
 }
+function decodeAttestation(address2, data) {
+  if (data.length < 1 + 96 + 4) return null;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const len = view.getUint32(97, true);
+  const at = 101 + len;
+  if (data.length < at + 40) return null;
+  return {
+    address: address2,
+    wallet: new import_web310.PublicKey(data.slice(1, 33)).toBase58(),
+    signer: new import_web310.PublicKey(data.slice(at, at + 32)).toBase58(),
+    expiry: Number(view.getBigInt64(at + 32, true))
+  };
+}
 function encodeApproval(status, scope) {
   const parts = [status, scope].map((s) => enc2.encode(s));
   const out = new Uint8Array(parts.reduce((n, p) => n + 4 + p.length, 0));
@@ -66690,13 +66703,19 @@ function toWeb3(ix) {
   });
 }
 async function attestIx(conn, operator, wallet) {
-  if (!CONFIG.sas) return null;
+  if (!CONFIG.sas) return [];
   const credential = new import_web311.PublicKey(CONFIG.sas.credential);
   const schema = new import_web311.PublicKey(CONFIG.sas.schema);
   const pda = attestationPda(credential, schema, wallet);
-  if (await conn.getAccountInfo(pda, "confirmed")) return null;
   const signer = createNoopSigner(address(operator.publicKey.toBase58()));
-  return toWeb3(
+  const out = [];
+  const existing = await conn.getAccountInfo(pda, "confirmed");
+  if (existing) {
+    const att = decodeAttestation(pda.toBase58(), existing.data);
+    if (att && att.expiry > Math.floor(Date.now() / 1e3) + 3600) return [];
+    out.push(toWeb3((0, import_sas_lib.getCloseAttestationInstruction)({ payer: signer, authority: signer, credential: address(credential.toBase58()), attestation: address(pda.toBase58()) })));
+  }
+  out.push(toWeb3(
     (0, import_sas_lib.getCreateAttestationInstruction)({
       payer: signer,
       authority: signer,
@@ -66707,7 +66726,8 @@ async function attestIx(conn, operator, wallet) {
       data: encodeApproval("approved", "cleara-devnet-demo"),
       expiry: BigInt(Math.floor(Date.now() / 1e3) + ATTESTATION_DAYS * 86400)
     })
-  );
+  ));
+  return out;
 }
 
 // server/demoHandler.ts
@@ -66796,9 +66816,8 @@ async function handler(req, res) {
       const need = scenario.orders.filter((o3) => o3.side === SIDE_BUY).reduce((n, o3) => n + quoteCeil(parseAtoms(o3.qty, asset.decimals), parseAtoms(o3.price, CONFIG.quoteDecimals), asset.decimals), 0n);
       if (pool < need)
         throw new DemoError(`The demo's test USDC pool is too low to fund the bot buyers right now. Try the seeded events, or top up the operator from ${CONFIG.quoteFaucet}.`, 503);
-      await fundWallet(conn, wallet, asset.mint);
       const attest = await attestIx(conn, operator, wallet);
-      if (attest) await send(conn, operator, [attest]);
+      if (attest.length) await send(conn, operator, attest);
       const bots = [0, 1, 2, 3].map((i) => botKeypair(operator, i));
       const roster = [...bots.map((b) => ({ participant: b.publicKey, allowance: 1 })), { participant: wallet, allowance: 2 }];
       const ev = await createEvent(conn, operator, {
@@ -66810,6 +66829,7 @@ async function handler(req, res) {
         roster,
         seed: scenario.orders
       });
+      await fundWallet(conn, wallet, asset.mint);
       return res.json({ auction: ev.auction.toBase58(), deadline: ev.deadline });
     }
     return res.status(400).json({ error: "Unknown action." });

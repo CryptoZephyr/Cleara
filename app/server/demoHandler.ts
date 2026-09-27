@@ -100,9 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .reduce((n, o) => n + quoteCeil(parseAtoms(o.qty, asset.decimals)!, parseAtoms(o.price, CONFIG.quoteDecimals)!, asset.decimals), 0n);
       if (pool < need)
         throw new DemoError(`The demo's test USDC pool is too low to fund the bot buyers right now. Try the seeded events, or top up the operator from ${CONFIG.quoteFaucet}.`, 503);
-      await fundWallet(conn, wallet, asset.mint);
       const attest = await attestIx(conn, operator, wallet);
-      if (attest) await send(conn, operator, [attest]);
+      if (attest.length) await send(conn, operator, attest);
       const bots = [0, 1, 2, 3].map((i) => botKeypair(operator, i));
       const roster = [...bots.map((b) => ({ participant: b.publicKey, allowance: 1 })), { participant: wallet, allowance: 2 }];
       const ev = await createEvent(conn, operator, {
@@ -114,6 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         roster,
         seed: scenario.orders,
       });
+      await fundWallet(conn, wallet, asset.mint);
       return res.json({ auction: ev.auction.toBase58(), deadline: ev.deadline });
     }
     return res.status(400).json({ error: "Unknown action." });

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { CONFIG } from "../../shared/config";
 import { SIDE_BUY, SIDE_EMPTY, SIDE_SELL, formatAtoms, parseAtoms, quoteCeil } from "../../shared/cleara";
-import { cancelOrderIxs, explainError, explorerTx, placeOrderIxs, sendIxs, tokenBalance, type AuctionView } from "../lib/chain";
+import { cancelOrderIxs, explainError, explorerTx, placeOrderIxs, quoteSym, sendIxs, tokenBalance, type AuctionView } from "../lib/chain";
 import { requestFunds } from "../lib/api";
 import { isValid, useAttestations } from "../lib/attest";
 import { dateTime, fmtBase, fmtPrice, fmtQuote, pair } from "../lib/format";
@@ -110,7 +110,7 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
   if (oppositeSide) problems.push("This wallet already has an order on the other side. Self-trading is not allowed.");
   if (freeSlots === 0) problems.push("All 8 order slots are taken.");
   const shortBalance = bal && locked !== null && (side === SIDE_BUY ? bal.quote < locked : bal.base < locked);
-  if (shortBalance) problems.push(side === SIDE_BUY ? `Not enough ${CONFIG.quoteSymbol} to lock.` : `Not enough ${sym} to lock.`);
+  if (shortBalance) problems.push(side === SIDE_BUY ? `Not enough ${quoteSym(a)} to lock.` : `Not enough ${sym} to lock.`);
   const lowSol = sol !== null && sol < 0.003;
 
   async function fund() {
@@ -152,7 +152,7 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
       <Overlay title="Order placed" onClose={onClose}>
         <div aria-live="polite" className="flex flex-col gap-4">
           <Notice tone="ok" title="Your order is funded and in the public book">
-            {locked !== null && (side === SIDE_BUY ? `${fmtQuote(a, locked)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, locked)} ${sym}`)} is locked in the event escrow. You can cancel it until {dateTime(a.deadline)}.
+            {locked !== null && (side === SIDE_BUY ? `${fmtQuote(a, locked)} ${quoteSym(a)}` : `${fmtBase(a, locked)} ${sym}`)} is locked in the event escrow. You can cancel it until {dateTime(a.deadline)}.
           </Notice>
           <a className="btn btn-secondary" href={explorerTx(step.sig)} target="_blank" rel="noreferrer">View transaction <IconExternal /></a>
           <button type="button" className="btn btn-primary" onClick={onClose}>Return to event</button>
@@ -185,7 +185,7 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
             ))}
           </div>
           <label>
-            <span className="label text-muted">Limit price ({CONFIG.quoteSymbol} per {sym})</span>
+            <span className="label text-muted">Limit price ({quoteSym(a)} per {sym})</span>
             <input className="field mt-1" inputMode="decimal" value={price} aria-invalid={!p} onChange={(e) => setPrice(e.target.value)} />
             <span className="mt-1 block text-[12px] text-muted">{side === SIDE_BUY ? "The most you will pay per token." : "The least you will accept per token."} Everyone who trades pays or receives the same clearing price.</span>
           </label>
@@ -195,9 +195,9 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
           </label>
           <dl className="m-0 grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 rounded-[4px] border border-line bg-champagne/50 p-3 text-[13px]">
             <dt className="text-muted">Amount locked</dt>
-            <dd className="m-0 mono text-right">{locked === null ? "—" : side === SIDE_BUY ? `${fmtQuote(a, locked)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, locked)} ${sym}`}</dd>
+            <dd className="m-0 mono text-right">{locked === null ? "—" : side === SIDE_BUY ? `${fmtQuote(a, locked)} ${quoteSym(a)}` : `${fmtBase(a, locked)} ${sym}`}</dd>
             <dt className="text-muted">Your balance</dt>
-            <dd className="m-0 mono text-right">{bal ? (side === SIDE_BUY ? `${fmtQuote(a, bal.quote)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, bal.base)} ${sym}`) : "…"}</dd>
+            <dd className="m-0 mono text-right">{bal ? (side === SIDE_BUY ? `${fmtQuote(a, bal.quote)} ${quoteSym(a)}` : `${fmtBase(a, bal.base)} ${sym}`) : "…"}</dd>
             <dt className="text-muted">Order allowance left</dt>
             <dd className="m-0 mono text-right">{roster ? `${remaining} of ${roster.allowance}` : "Not approved"}</dd>
             <dt className="text-muted">Fee</dt>
@@ -237,9 +237,9 @@ export function OrderDrawer({ a, initialSide, onClose, onDone }: { a: AuctionVie
           <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[13px]">
             <dt className="text-muted">Asset</dt><dd className="m-0">{a.asset?.name} ({sym})</dd>
             <dt className="text-muted">Side</dt><dd className="m-0"><SideTag side={side} /></dd>
-            <dt className="text-muted">Limit price</dt><dd className="m-0 mono">{fmtPrice(a, p)} {CONFIG.quoteSymbol}</dd>
+            <dt className="text-muted">Limit price</dt><dd className="m-0 mono">{fmtPrice(a, p)} {quoteSym(a)}</dd>
             <dt className="text-muted">Quantity</dt><dd className="m-0 mono">{fmtBase(a, q)} {sym}</dd>
-            <dt className="text-muted">Locked now</dt><dd className="m-0 mono">{side === SIDE_BUY ? `${fmtQuote(a, locked)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, locked)} ${sym}`}</dd>
+            <dt className="text-muted">Locked now</dt><dd className="m-0 mono">{side === SIDE_BUY ? `${fmtQuote(a, locked)} ${quoteSym(a)}` : `${fmtBase(a, locked)} ${sym}`}</dd>
             <dt className="text-muted">Deadline</dt><dd className="m-0">{dateTime(a.deadline)} (also the cancellation cutoff)</dd>
             <dt className="text-muted">Network</dt><dd className="m-0">Solana Devnet</dd>
             <dt className="text-muted">Visibility</dt><dd className="m-0">Public: your limit and quantity can be read onchain by anyone.</dd>
@@ -268,7 +268,7 @@ export function CancelDialog({ a, slot, onClose, onDone }: { a: AuctionView; slo
   const o = a.orders[slot];
   const sym = a.asset?.symbol ?? "";
   const [st, setSt] = useState<{ kind: "idle" | "signing" } | { kind: "done"; sig: string } | { kind: "error"; msg: string }>({ kind: "idle" });
-  const [back] = useState(() => (o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${CONFIG.quoteSymbol}` : `${fmtBase(a, o.escrowed)} ${sym}`));
+  const [back] = useState(() => (o.side === SIDE_BUY ? `${fmtQuote(a, o.escrowed)} ${quoteSym(a)}` : `${fmtBase(a, o.escrowed)} ${sym}`));
   return (
     <Overlay title={`Cancel order #${slot + 1}`} onClose={onClose}>
       <div className="flex flex-col gap-4" aria-live="polite">
@@ -280,7 +280,7 @@ export function CancelDialog({ a, slot, onClose, onDone }: { a: AuctionView; slo
           </>
         ) : (
           <>
-            <p className="m-0">Cancelling removes your <SideTag side={o.side} /> order at {fmtPrice(a, o.limitPrice)} {CONFIG.quoteSymbol} and returns {back} to your wallet immediately. Your allowance slot becomes free again.</p>
+            <p className="m-0">Cancelling removes your <SideTag side={o.side} /> order at {fmtPrice(a, o.limitPrice)} {quoteSym(a)} and returns {back} to your wallet immediately. Your allowance slot becomes free again.</p>
             {st.kind === "error" && <Notice tone="danger" title="Cancellation failed">{st.msg}</Notice>}
             <div className="grid grid-cols-2 gap-2">
               <button type="button" className="btn btn-secondary" onClick={onClose}>Keep order</button>
