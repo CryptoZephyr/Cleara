@@ -51613,6 +51613,12 @@ var devnet_default = {
   quoteSymbol: "USDC",
   quoteDecimals: 6,
   feeAccount: "6QTsgiQTpRJepczaiYfS5o3ZmqsErtn36UwNkrbXhNji",
+  squads: {
+    multisig: "5RYHhV1ScB7zYnNVafZcF9AzEGhRZ8GSxjovbYvKvt5Y",
+    vault: "8vYNTKNNYZFz6P4t1zaLULGFsEEjviXExnTw7jmqhNdK",
+    threshold: 2,
+    members: 3
+  },
   assets: [
     {
       mint: "HFHZDubMuKFJ1Q1WEtF7GoxNjgA2WfsnXErfVdhMmUiC",
@@ -51658,6 +51664,7 @@ var devnet_default = {
 
 // shared/config.ts
 var CONFIG = devnet_default;
+var ISSUERS = [CONFIG.operator, ...CONFIG.squads ? [CONFIG.squads.vault] : []];
 
 // shared/cleara.ts
 var import_web35 = __toESM(require_index_cjs(), 1);
@@ -51737,7 +51744,7 @@ async function buildOrder(conn, account, q) {
   const readOnly = { publicKey: import_web37.PublicKey.default };
   const program = new import_anchor.Program(cleara_default, new import_anchor.AnchorProvider(conn, readOnly, { commitment: "confirmed" }));
   const a = await program.account.auction.fetchNullable(auctionKey, "confirmed");
-  if (!a || !a.issuer.equals(new import_web37.PublicKey(CONFIG.operator))) throw new PayError("This is not a Cleara Devnet event.");
+  if (!a || !ISSUERS.includes(a.issuer.toBase58())) throw new PayError("This is not a Cleara Devnet event.");
   const price = parseAtoms(one(q.price), a.quoteDecimals);
   const qty = parseAtoms(one(q.qty), a.baseDecimals);
   if (!price || !qty) throw new PayError("Enter a price and quantity greater than zero.");

@@ -16,7 +16,7 @@ import {
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import idlJson from "../idl/cleara.json";
 import type { Cleara } from "../idl/cleara";
-import { CONFIG, assetByMint, type AssetConfig } from "../../shared/config";
+import { CONFIG, ISSUERS, assetByMint, type AssetConfig } from "../../shared/config";
 import { PROGRAM_ID, SIDE_EMPTY, STATUS_SETTLED, vaultPdas, type BookOrder } from "../../shared/cleara";
 
 export const RPC_URL = (import.meta.env.VITE_RPC_URL as string | undefined) || CONFIG.rpc;
@@ -31,6 +31,7 @@ export interface RosterView {
 
 export interface AuctionView {
   address: string;
+  issuer: string;
   id: bigint;
   asset: AssetConfig | undefined;
   baseMint: string;
@@ -82,6 +83,7 @@ const big = (b: BN) => BigInt(b.toString());
 function toView(address: string, a: RawAuction): AuctionView {
   return {
     address,
+    issuer: a.issuer.toBase58(),
     id: big(a.auctionId),
     asset: assetByMint(a.baseMint.toBase58()),
     baseMint: a.baseMint.toBase58(),
@@ -115,14 +117,15 @@ function toView(address: string, a: RawAuction): AuctionView {
 
 export const decodeAuction = (address: string, data: Buffer) => toView(address, program.coder.accounts.decode("auction", data) as RawAuction);
 
-const operatorFilter = [{ memcmp: { offset: 8, bytes: CONFIG.operator } }];
+const issuerFilters = ISSUERS.map((issuer) => [{ memcmp: { offset: 8, bytes: issuer } }]);
 
 /** Events priced in a retired quote mint (the old synthetic dUSDC); kept for My orders and refunds. */
 export const isLegacy = (a: AuctionView) => a.quoteMint !== CONFIG.quoteMint;
+export const isTeamIssued = (a: AuctionView) => !!CONFIG.squads && a.issuer === CONFIG.squads.vault;
 export const quoteSym = (a: AuctionView) => (isLegacy(a) ? "dUSDC" : CONFIG.quoteSymbol);
 
 export async function fetchAuctions(): Promise<AuctionView[]> {
-  const accounts = await connection.getProgramAccounts(PROGRAM_ID, { commitment: "confirmed", filters: operatorFilter });
+  const accounts = (await Promise.all(issuerFilters.map((filters) => connection.getProgramAccounts(PROGRAM_ID, { commitment: "confirmed", filters })))).flat();
   return accounts
     .map(({ pubkey, account }) => decodeAuction(pubkey.toBase58(), account.data))
     .sort((x, y) => Number(y.id - x.id));
@@ -134,9 +137,9 @@ export async function fetchAuction(address: string): Promise<AuctionView | null>
   return decodeAuction(address, info.data);
 }
 
-/** Streams every change to this operator's auction accounts over the RPC websocket. Returns an unsubscribe function. */
+/** Streams every change to Cleara issuers' auction accounts over the RPC websocket. Returns an unsubscribe function. */
 export function watchAuctions(onChange: (a: AuctionView) => void): () => void {
-  const id = connection.onProgramAccountChange(
+  const ids = issuerFilters.map((filters) => connection.onProgramAccountChange(
     PROGRAM_ID,
     ({ accountId, accountInfo }) => {
       try {
@@ -146,9 +149,9 @@ export function watchAuctions(onChange: (a: AuctionView) => void): () => void {
         return;
       }
     },
-    { commitment: "confirmed", filters: operatorFilter }
-  );
-  return () => void connection.removeProgramAccountChangeListener(id).catch(() => undefined);
+    { commitment: "confirmed", filters }
+  ));
+  return () => ids.forEach((id) => void connection.removeProgramAccountChangeListener(id).catch(() => undefined));
 }
 
 export function watchAuction(address: string, onChange: (a: AuctionView) => void): () => void {

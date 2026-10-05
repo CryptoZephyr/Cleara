@@ -22,6 +22,7 @@ import idl from "../src/idl/cleara.json" with { type: "json" };
 import type { Cleara } from "../src/idl/cleara";
 import { CONFIG, type AssetConfig } from "../shared/config";
 import { SIDE_BUY, SIDE_EMPTY, auctionPda, parseAtoms, quoteCeil, vaultPdas } from "../shared/cleara";
+import { runAsTeam, teamAddresses } from "./squads";
 import { SCENARIOS, type ScenarioId, type SeedOrder } from "../shared/scenarios";
 
 export function parseSecret(raw: string): Keypair {
@@ -129,12 +130,15 @@ export interface CreateEventOpts {
   feeBps: number;
   roster: { participant: PublicKey; allowance: number }[];
   seed: SeedOrder[];
+  /** Create the event from the Squads team vault (2-of-3 approval) instead of the operator wallet. */
+  team?: boolean;
 }
 
 export async function createEvent(conn: Connection, operator: Keypair, o: CreateEventOpts) {
   const program = makeProgram(conn, operator);
   const id = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
-  const auction = auctionPda(operator.publicKey, id);
+  const issuer = o.team ? teamAddresses(operator).vault : operator.publicKey;
+  const auction = auctionPda(issuer, id);
   const { baseVault, quoteVault } = vaultPdas(auction);
   const now = Math.floor(Date.now() / 1000);
   const slot = await conn.getSlot("confirmed");
@@ -152,7 +156,7 @@ export async function createEvent(conn: Connection, operator: Keypair, o: Create
       o.roster
     )
     .accountsPartial({
-      issuer: operator.publicKey,
+      issuer,
       auction,
       baseMint,
       quoteMint,
@@ -164,7 +168,8 @@ export async function createEvent(conn: Connection, operator: Keypair, o: Create
       systemProgram: SystemProgram.programId,
     })
     .instruction();
-  await send(conn, operator, [createIx]);
+  const team = o.team ? await runAsTeam(conn, operator, [createIx]) : null;
+  if (!team) await send(conn, operator, [createIx]);
 
   await sweepBots(conn, operator);
   const need = new Map<number, bigint>();
@@ -213,7 +218,7 @@ export async function createEvent(conn: Connection, operator: Keypair, o: Create
     }
     await send(conn, operator, ixs, signers);
   }
-  return { auction, id, deadline };
+  return { auction, id, deadline, team };
 }
 
 export async function settleIx(conn: Connection, operator: Keypair, auction: PublicKey) {

@@ -22,10 +22,15 @@ export interface DevnetConfig {
   retiredQuoteMints: string[];
   feeAccount: string;
   sas?: { credential: string; schema: string };
+  /** Squads multisig whose vault issues team events. */
+  squads?: { multisig: string; vault: string; threshold: number; members: number };
   assets: AssetConfig[];
   bots: string[];
 }
 
 export const CONFIG = devnet as DevnetConfig;
+
+/** Wallets whose events Cleara lists: the demo operator and, if configured, the Squads team vault. */
+export const ISSUERS = [CONFIG.operator, ...(CONFIG.squads ? [CONFIG.squads.vault] : [])];
 
 export const assetByMint = (mint: string) => CONFIG.assets.find((a) => a.mint === mint);
