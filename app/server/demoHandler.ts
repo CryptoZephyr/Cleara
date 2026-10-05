@@ -5,6 +5,8 @@ import { CONFIG, assetByMint } from "../shared/config";
 import { SCENARIOS, type ScenarioId } from "../shared/scenarios";
 import { baseAta, botKeypair, createEvent, fundIxs, makeProgram, parseSecret, quoteAta, send } from "./operator";
 import { attestIx } from "./sas";
+import { scheduleSettle } from "./tuktuk";
+import { DEFAULT_CRANK_URL } from "../shared/tuktuk";
 
 const DEMO_OPEN_SECS = 240;
 const DEMO_SETTLE_SECS = 86400;
@@ -123,7 +125,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         seed: scenario.orders,
       });
       await fundWallet(conn, wallet, asset.mint);
-      return res.json({ auction: ev.auction.toBase58(), deadline: ev.deadline });
+      let autoSettleTask: string | null = null;
+      try {
+        autoSettleTask = (await scheduleSettle(conn, operator, ev.auction, process.env.CLEARA_CRANK_URL ?? DEFAULT_CRANK_URL)).task.toBase58();
+      } catch (e) {
+        console.error("auto-settle scheduling failed", e);
+      }
+      return res.json({ auction: ev.auction.toBase58(), deadline: ev.deadline, autoSettleTask });
     }
     return res.status(400).json({ error: "Unknown action." });
   } catch (e) {

@@ -4,7 +4,7 @@ import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import idl from "../src/idl/cleara.json" with { type: "json" };
 import type { Cleara } from "../src/idl/cleara";
-import { CONFIG } from "../shared/config";
+import { CONFIG, ISSUERS } from "../shared/config";
 import { SIDE_BUY, SIDE_EMPTY, SIDE_SELL, STATUS_SETTLED, parseAtoms, quoteCeil, vaultPdas } from "../shared/cleara";
 import { attestationPda, decodeAttestation } from "../shared/sas";
 
@@ -36,7 +36,7 @@ async function buildOrder(conn: Connection, account: PublicKey, q: VercelRequest
   const readOnly = { publicKey: PublicKey.default } as unknown as Wallet;
   const program = new Program<Cleara>(idl as Cleara, new AnchorProvider(conn, readOnly, { commitment: "confirmed" }));
   const a = await program.account.auction.fetchNullable(auctionKey, "confirmed");
-  if (!a || !a.issuer.equals(new PublicKey(CONFIG.operator))) throw new PayError("This is not a Cleara Devnet event.");
+  if (!a || !ISSUERS.includes(a.issuer.toBase58())) throw new PayError("This is not a Cleara Devnet event.");
   const price = parseAtoms(one(q.price), a.quoteDecimals);
   const qty = parseAtoms(one(q.qty), a.baseDecimals);
   if (!price || !qty) throw new PayError("Enter a price and quantity greater than zero.");

@@ -22,6 +22,11 @@ export default function Developers() {
             <dt className="text-muted">Program</dt><dd className="m-0"><Copyable value={CONFIG.programId} label={CONFIG.programId} /> · <a href={explorerAddr(CONFIG.programId)} target="_blank" rel="noreferrer" className="text-ink">Explorer ↗</a></dd>
             <dt className="text-muted">Cluster</dt><dd className="m-0">Solana Devnet</dd>
             <dt className="text-muted">Demo issuer</dt><dd className="m-0"><Copyable value={CONFIG.operator} /></dd>
+            {CONFIG.squads && (
+              <>
+                <dt className="text-muted">Team issuer</dt><dd className="m-0">Squads {CONFIG.squads.threshold}-of-{CONFIG.squads.members} multisig <Copyable value={CONFIG.squads.multisig} />, vault <Copyable value={CONFIG.squads.vault} /></dd>
+              </>
+            )}
             <dt className="text-muted">Quote token</dt><dd className="m-0">{CONFIG.quoteName} <Copyable value={CONFIG.quoteMint} /></dd>
             {CONFIG.assets.map((a) => (
               <div key={a.mint} className="contents">

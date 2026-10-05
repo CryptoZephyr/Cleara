@@ -3,8 +3,9 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { SIDE_BUY } from "../../shared/cleara";
 import { activeOrders, explainError, explorerAddr, explorerTx, latestSignature, phaseOf, quoteSym, refundIxs, sendIxs, settleIxs, type AuctionView } from "../lib/chain";
 import { dateTime, fmtBase, fmtPrice, fmtQuote } from "../lib/format";
-import { IconExternal } from "./icons";
+import { IconClock, IconExternal } from "./icons";
 import { Allocation, personalResult } from "./EventParts";
+import { settledByTuktuk, type SettleTask } from "../lib/tuktuk";
 import { Copyable, Notice, SideTag, Window } from "./ui";
 
 type Act = { kind: "idle" } | { kind: "busy"; what: string } | { kind: "ok"; what: string; sig: string } | { kind: "error"; what: string; msg: string };
@@ -39,13 +40,33 @@ export function ActionStatus({ act }: { act: Act }) {
   );
 }
 
+const AUTO_SETTLE_GRACE_SECS = 180;
+
+export function AutoSettleBadge({ task }: { task: SettleTask }) {
+  return (
+    <a href={explorerAddr(task.address)} target="_blank" rel="noreferrer" title={`TukTuk task ${task.address}`} className="inline-flex items-center gap-1.5 rounded-[4px] border-2 border-emerald bg-champagne px-2 py-0.5 label text-ink no-underline">
+      <IconClock size={13} />
+      Auto-settle scheduled
+    </a>
+  );
+}
+
 /** Shown after the deadline and before settlement: anyone can trigger the all-or-nothing settlement. */
-export function SettlePanel({ a, now, onDone, onConnect }: { a: AuctionView; now: number; onDone: () => void; onConnect: () => void }) {
+export function SettlePanel({ a, now, task, onDone, onConnect }: { a: AuctionView; now: number; task: SettleTask | null | undefined; onDone: () => void; onConnect: () => void }) {
   const { act, run, connected } = useAction();
+  const late = now - a.deadline > AUTO_SETTLE_GRACE_SECS;
   return (
     <Window title="Order window closed · ready to settle" active>
       <div className="flex flex-col gap-3">
         <p className="m-0">The order deadline passed at {dateTime(a.deadline)}. Anyone can now trigger settlement until {dateTime(a.settleBy)}. It computes the clearing price onchain and moves every matched and unmatched amount in one transaction.</p>
+        {task && (
+          <Notice tone={late ? "warn" : "info"} title={late ? "Auto-settle is running late" : "Auto-settle scheduled"}>
+            {late
+              ? "The automatic settlement has not run yet. You can settle the event yourself below."
+              : "A TukTuk crank on Devnet will settle this event automatically, usually within about a minute of the deadline. You can still settle it yourself."}{" "}
+            <a href={explorerAddr(task.address)} target="_blank" rel="noreferrer" className="text-ink">View task ↗</a>
+          </Notice>
+        )}
         {connected ? (
           <button type="button" className="btn btn-primary" disabled={act.kind === "busy" || now < a.deadline} onClick={() => run("Settlement", () => settleIxs(a), onDone)}>
             Settle event now
@@ -61,9 +82,13 @@ export function SettlePanel({ a, now, onDone, onConnect }: { a: AuctionView; now
 
 export function SettlementResult({ a, me }: { a: AuctionView; me: string | null }) {
   const [sig, setSig] = useState<string | null | undefined>(undefined);
+  const [auto, setAuto] = useState<boolean | null>(null);
   useEffect(() => {
     latestSignature(a.address).then(setSig).catch(() => setSig(null));
   }, [a.address]);
+  useEffect(() => {
+    if (sig) settledByTuktuk(sig).then(setAuto, () => setAuto(null));
+  }, [sig]);
   const sym = a.asset?.symbol ?? "";
   const orders = activeOrders(a);
   const filled = orders.filter((o) => o.filled > 0n);
@@ -95,7 +120,9 @@ export function SettlementResult({ a, me }: { a: AuctionView; me: string | null 
             ) : (
               <p className="m-0 text-[13px] text-muted">Looking up…</p>
             )}
-            <p className="m-0 text-[13px] text-muted">One all-or-nothing transaction on Solana Devnet.</p>
+            <p className="m-0 text-[13px] text-muted">
+              {auto === true ? "Settled automatically by a TukTuk crank. " : auto === false ? "Settled by a participant. " : ""}One all-or-nothing transaction on Solana Devnet.
+            </p>
           </div>
         </div>
         <div className="border-t-2 border-emerald">

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { SIDE_BUY, SIDE_SELL, clear } from "../../shared/cleara";
+import { SIDE_BUY, SIDE_SELL, STATUS_SETTLED, clear } from "../../shared/cleara";
 import { explorerAddr, fetchAuction, phaseOf, quoteSym, watchAuction, type AuctionView } from "../lib/chain";
 import { useStore } from "../lib/store";
 import { eventLabel, pair } from "../lib/format";
@@ -10,7 +10,8 @@ import { Page } from "../components/Shell";
 import { DepthChart } from "../components/DepthChart";
 import { Countdown, OrderBook, ProvisionalClearing, Rules } from "../components/EventParts";
 import { CancelDialog, OrderDrawer } from "../components/OrderDrawer";
-import { RefundPanel, SettlePanel, SettlementResult } from "../components/Settlement";
+import { AutoSettleBadge, RefundPanel, SettlePanel, SettlementResult } from "../components/Settlement";
+import { useSettleTask } from "../lib/tuktuk";
 import { WalletDialog } from "../components/Wallet";
 import { Copyable, Notice, PhaseBadge, SkeletonRows, SyntheticTag, Window } from "../components/ui";
 
@@ -34,6 +35,9 @@ export default function EventDetail() {
   const [drawer, setDrawer] = useState<number | null>(null);
   const [cancelSlot, setCancelSlot] = useState<number | null>(null);
   const [connect, setConnect] = useState(false);
+
+  const unsettled = !!a && a.status !== STATUS_SETTLED && now < a.settleBy;
+  const task = useSettleTask(address ?? "", unsettled && validAddress(address));
 
   const current = useRef(address);
   const load = useCallback(async () => {
@@ -110,6 +114,7 @@ export default function EventDetail() {
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <PhaseBadge phase={phase} />
+            {task && <AutoSettleBadge task={task} />}
             <SyntheticTag />
             <span className="label text-muted">Approved participants only</span>
           </div>
@@ -125,7 +130,7 @@ export default function EventDetail() {
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-8 flex flex-col gap-6 max-lg:col-span-12">
           {phase === "settled" && <SettlementResult a={a} me={me} />}
-          {phase === "awaiting" && <SettlePanel a={a} now={now} onDone={after} onConnect={() => setConnect(true)} />}
+          {phase === "awaiting" && <SettlePanel a={a} now={now} task={task} onDone={after} onConnect={() => setConnect(true)} />}
           {phase === "expired" && <RefundPanel a={a} me={me} now={now} onDone={after} onConnect={() => setConnect(true)} />}
           <Window title={phase === "settled" ? "Order curves at settlement" : "Funded demand and supply"}>
             <DepthChart

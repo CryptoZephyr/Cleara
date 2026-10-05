@@ -5,6 +5,7 @@ export interface FundResult {
 export interface DemoEventResult {
   auction: string;
   deadline: number;
+  autoSettleTask: string | null;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {

@@ -7,6 +7,12 @@
   "quoteSymbol": "USDC",
   "quoteDecimals": 6,
   "feeAccount": "6QTsgiQTpRJepczaiYfS5o3ZmqsErtn36UwNkrbXhNji",
+  "squads": {
+    "multisig": "5RYHhV1ScB7zYnNVafZcF9AzEGhRZ8GSxjovbYvKvt5Y",
+    "vault": "8vYNTKNNYZFz6P4t1zaLULGFsEEjviXExnTw7jmqhNdK",
+    "threshold": 2,
+    "members": 3
+  },
   "assets": [
     {
       "mint": "HFHZDubMuKFJ1Q1WEtF7GoxNjgA2WfsnXErfVdhMmUiC",

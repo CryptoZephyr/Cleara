@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { CONFIG } from "../../shared/config";
 import { MAX_ORDERS, SIDE_BUY, SIDE_EMPTY, SIDE_SELL, clear, quoteCeil, type Clearing } from "../../shared/cleara";
-import { activeOrders, explorerAddr, phaseOf, quoteSym, type AuctionView, type Phase } from "../lib/chain";
+import { activeOrders, explorerAddr, isTeamIssued, phaseOf, quoteSym, type AuctionView, type Phase } from "../lib/chain";
 import { isValid, useAttestations } from "../lib/attest";
 import { alias, countdown, dateTime, eventLabel, fmtBase, fmtPrice, fmtQuote, pair } from "../lib/format";
 import { DepthChart } from "./DepthChart";
@@ -211,7 +211,9 @@ export function Rules({ a }: { a: AuctionView }) {
   const sym = a.asset?.symbol ?? "";
   const atts = useAttestations(a.roster.map((r) => r.participant));
   const verified = atts ? a.roster.filter((r) => isValid(atts.get(r.participant), Date.now() / 1000)).length : null;
+  const sq = isTeamIssued(a) ? CONFIG.squads : undefined;
   const rows: [string, string][] = [
+    ["Issuer", sq ? `Team wallet: any ${sq.threshold} of ${sq.members} members approve` : "Cleara demo operator"],
     ["Order deadline", dateTime(a.deadline)],
     ["Cancellation cutoff", "Same as the order deadline"],
     ["Settlement window", `Until ${dateTime(a.settleBy)}`],
@@ -235,6 +237,14 @@ export function Rules({ a }: { a: AuctionView }) {
           </div>
         ))}
       </dl>
+      {sq && (
+        <p className="mb-0 mt-3 border-t border-line pt-3 text-[13px] leading-[18px]">
+          <span className="font-semibold">Team wallet:</span> this event was created by a{" "}
+          <a className="text-ink underline underline-offset-2" href={explorerAddr(sq.multisig)} target="_blank" rel="noreferrer">Squads multisig</a> on Devnet. The
+          proposal needed {sq.threshold} of {sq.members} member approvals before it ran, the way a real issuer team would sign off. Settlement is the same as any
+          event: anyone, or the TukTuk scheduler, can trigger it.
+        </p>
+      )}
       {CONFIG.sas && (
         <p className="mb-0 mt-3 border-t border-line pt-3 text-[13px] leading-[18px]">
           <span className="font-semibold">Participant credentials:</span>{" "}
