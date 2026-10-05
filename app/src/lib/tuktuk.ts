@@ -44,11 +44,15 @@ export async function settledByTuktuk(signature: string): Promise<boolean> {
 
 /** undefined while loading, null when no task is pending. Re-checks every 15s so the status follows the crank. */
 export function useSettleTask(auction: string, enabled: boolean) {
-  const [task, setTask] = useState<SettleTask | null | undefined>(undefined);
+  const [state, setState] = useState<{ auction: string; task: SettleTask | null } | null>(null);
   useEffect(() => {
     if (!enabled) return;
     let live = true;
-    const load = () => findSettleTask(auction).then((t) => live && setTask(t), () => live && setTask((prev) => prev ?? null));
+    const load = () =>
+      findSettleTask(auction).then(
+        (task) => live && setState({ auction, task }),
+        () => live && setState((prev) => (prev?.auction === auction ? prev : { auction, task: null }))
+      );
     load();
     const t = setInterval(load, 15000);
     return () => {
@@ -56,5 +60,6 @@ export function useSettleTask(auction: string, enabled: boolean) {
       clearInterval(t);
     };
   }, [auction, enabled]);
-  return enabled ? task : null;
+  if (!enabled) return null;
+  return state?.auction === auction ? state.task : undefined;
 }

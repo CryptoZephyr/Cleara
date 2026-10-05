@@ -17,6 +17,13 @@ const conn = new Connection(process.env.RPC_URL ?? CONFIG.rpc, "confirmed");
 const op = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(`${homedir()}/.config/solana/cleara-operator.json`, "utf8"))));
 const tuktuk = tuktukProgram(conn, op);
 
+async function addAuthority(taskQueue: PublicKey) {
+  const authority = taskQueueAuthorityPda(taskQueue, op.publicKey);
+  if (await conn.getAccountInfo(authority)) return;
+  const ix = await tuktuk.methods.addQueueAuthorityV0().accountsPartial({ payer: op.publicKey, updateAuthority: op.publicKey, queueAuthority: op.publicKey, taskQueueAuthority: authority, taskQueue, systemProgram: SystemProgram.programId }).instruction();
+  console.log("queue authority", await send(conn, op, [ix]));
+}
+
 async function setup() {
   const [config] = PublicKey.findProgramAddressSync([Buffer.from("tuktuk_config")], TUKTUK_PROGRAM_ID);
   const nameHash = createHash("sha256").update(TASK_QUEUE_NAME).digest();
@@ -33,13 +40,10 @@ async function setup() {
       .accountsPartial({ payer: op.publicKey, tuktukConfig: config, updateAuthority: op.publicKey, taskQueue, taskQueueNameMapping: mapping, systemProgram: SystemProgram.programId })
       .instruction();
     console.log("task queue", taskQueue.toBase58(), await send(conn, op, [ix]), "(update TASK_QUEUE in shared/tuktuk.ts)");
+    await addAuthority(taskQueue);
     return;
   }
-  const authority = taskQueueAuthorityPda(TASK_QUEUE, op.publicKey);
-  if (!(await conn.getAccountInfo(authority))) {
-    const ix = await tuktuk.methods.addQueueAuthorityV0().accountsPartial({ payer: op.publicKey, updateAuthority: op.publicKey, queueAuthority: op.publicKey, taskQueueAuthority: authority, taskQueue: TASK_QUEUE, systemProgram: SystemProgram.programId }).instruction();
-    console.log("queue authority", await send(conn, op, [ix]));
-  }
+  await addAuthority(TASK_QUEUE);
   console.log("task queue ready", TASK_QUEUE.toBase58());
 }
 

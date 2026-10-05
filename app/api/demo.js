@@ -68264,6 +68264,7 @@ async function scheduleSettle(conn, operator, auction, crankUrl) {
   const a = await makeProgram(conn, operator).account.auction.fetch(auction, "confirmed");
   const asset = assetByMint(a.baseMint.toBase58());
   if (!asset) throw new Error("Unknown asset");
+  if (a.quoteMint.toBase58() !== CONFIG.quoteMint) throw new Error("Only events quoted in the current USDC mint can be auto-settled.");
   const participants = a.roster.slice(0, a.rosterLen).map((r) => r.participant);
   const lookupTable = await createEventLookupTable(conn, operator, auction, asset, participants);
   const url = crankTaskUrl(crankUrl, auction, lookupTable);
