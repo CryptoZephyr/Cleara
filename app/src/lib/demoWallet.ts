@@ -34,21 +34,26 @@ export class DemoWalletAdapter extends BaseSignerWalletAdapter<"Cleara demo wall
   supportedTransactionVersions = new Set(["legacy", 0] as const);
   connecting = false;
   private keypair: Keypair | null = null;
+  private attempt = 0;
 
   get publicKey(): PublicKey | null {
     return this.keypair?.publicKey ?? null;
   }
 
   async connect(): Promise<void> {
+    const attempt = ++this.attempt;
     this.connecting = true;
     // Yield so wallet-adapter listeners attached in the same render receive the connect event.
     await new Promise((r) => setTimeout(r, 0));
+    if (attempt !== this.attempt) return;
     this.keypair = loadOrCreate();
     this.connecting = false;
     this.emit("connect", this.keypair.publicKey);
   }
 
   async disconnect(): Promise<void> {
+    this.attempt++;
+    this.connecting = false;
     this.keypair = null;
     this.emit("disconnect");
   }
