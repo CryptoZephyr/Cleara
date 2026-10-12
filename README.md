@@ -3,7 +3,7 @@
 **A scheduled selling day for tokenized assets that are hard to sell.** Buyers and sellers place orders before a
 deadline, then everyone who matches trades at one price, all at once.
 
-Live demo: **https://cleara-ten.vercel.app** · Video: not available yet · Docs: this README and the in-app
+Live demo: **https://cleara-ten.vercel.app** · Videos: [pitch](https://youtu.be/l-0BdbThVcA) · [product demo](https://youtu.be/ti2K5vLGJNE) · Docs: this README and the in-app
 [Developers page](https://cleara-ten.vercel.app/developers) · Submission: Colosseum Crypto World's Fair (not linked yet)
 
 > Hackathon prototype. It runs on Solana's test network (Devnet) with made-up assets and free test money, so nothing
