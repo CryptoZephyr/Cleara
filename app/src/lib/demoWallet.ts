@@ -41,6 +41,8 @@ export class DemoWalletAdapter extends BaseSignerWalletAdapter<"Cleara demo wall
 
   async connect(): Promise<void> {
     this.connecting = true;
+    // Yield so wallet-adapter listeners attached in the same render receive the connect event.
+    await new Promise((r) => setTimeout(r, 0));
     this.keypair = loadOrCreate();
     this.connecting = false;
     this.emit("connect", this.keypair.publicKey);
