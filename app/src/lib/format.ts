@@ -1,6 +1,6 @@
 import { CONFIG } from "../../shared/config";
 import { formatAtoms } from "../../shared/cleara";
-import type { AuctionView } from "./chain";
+import { quoteSym, type AuctionView } from "./chain";
 
 export const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 
@@ -16,7 +16,7 @@ export const fmtBase = (a: AuctionView, q: bigint) => formatAtoms(q, a.baseDecim
 export const fmtQuote = (a: AuctionView, q: bigint) => formatAtoms(q, a.quoteDecimals, 6);
 
 export const eventLabel = (a: AuctionView) => `EVENT ${a.address.slice(0, 4).toUpperCase()}`;
-export const pair = (a: AuctionView) => `${a.asset?.symbol ?? short(a.baseMint)} / ${CONFIG.quoteSymbol}`;
+export const pair = (a: AuctionView) => `${a.asset?.symbol ?? short(a.baseMint)} / ${quoteSym(a)}`;
 
 export function countdown(secs: number): string {
   if (secs <= 0) return "00:00:00";

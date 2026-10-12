@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { CONFIG } from "../../shared/config";
 import { MAX_ORDERS, SIDE_BUY, SIDE_EMPTY, SIDE_SELL, clear, quoteCeil, type Clearing } from "../../shared/cleara";
-import { activeOrders, explorerAddr, isTeamIssued, phaseOf, quoteSym, type AuctionView, type Phase } from "../lib/chain";
+import { activeOrders, explorerAddr, isLegacy, isTeamIssued, phaseOf, quoteSym, type AuctionView, type Phase } from "../lib/chain";
 import { isValid, useAttestations } from "../lib/attest";
 import { alias, countdown, dateTime, eventLabel, fmtBase, fmtPrice, fmtQuote, pair } from "../lib/format";
 import { DepthChart } from "./DepthChart";
@@ -225,7 +225,7 @@ export function Rules({ a }: { a: AuctionView }) {
     ["Allocation", "Price priority, then pro rata at the marginal price; leftover units by slot order"],
     ["Settlement", "All orders settle in one all-or-nothing transaction"],
     ["Participants", `${a.roster.length} approved wallets`],
-    ["Quote token", `${CONFIG.quoteName}, free from faucet.circle.com`],
+    ["Quote token", isLegacy(a) ? "dUSDC, a retired synthetic test dollar (refunds only)" : `${CONFIG.quoteName}, free from faucet.circle.com`],
   ];
   return (
     <Window title="Event rules">
