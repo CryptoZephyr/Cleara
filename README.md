@@ -84,13 +84,14 @@ would need also already exist on Solana, and Cleara uses each one at a specific 
 2. Click **Connect wallet** and choose **Cleara demo wallet (Devnet)**. It's a throwaway test wallet in your browser,
    with no extension or sign-up.
 3. Under **Try it**, pick an asset and a starting order book, then click **Start demo event**. You get a 4-minute
-   event with a few practice orders already in it, and the page shows **Auto-settle scheduled**.
+   event with a few practice orders already in it. The page shows **Auto-settle scheduled** if the automatic run was
+   booked; if booking failed, the event still works and you settle it by hand in step 6.
 4. Place a buy or sell order. If you need test tokens, click **Get demo funds**. Buy orders use Circle's free test
    USDC; if the demo pool is empty, get some at [faucet.circle.com](https://faucet.circle.com) (choose Solana Devnet).
    Or tap **Sign on your phone** to sign the same order from a mobile wallet with Solana Pay.
 5. Watch the expected price update as orders change. You can cancel and re-place before the deadline.
 6. When time runs out, wait a few seconds: the event settles itself and shows your receipt. If it hasn't after a
-   minute, click **Settle event now**.
+   minute, or the page never showed **Auto-settle scheduled**, click **Settle event now**.
 7. Open **My orders** for your history, or look at the other example events (finished, partly filled, expired, and
    one created by the 2-of-3 team wallet).
 
@@ -265,7 +266,9 @@ The app streams account changes over the Solana RPC websocket, with a slow polli
 transaction for that event (orders can change until the deadline), signed by a task signer derived from the operator key.
 
 Limits: a wallet can have at most 2 open demo events and the site at most 12. The operator refuses requests once its
-balance falls below 0.5 SOL and keeps an 8 USDC reserve. Funding requests are capped per call but not rate-limited per IP.
+balance falls below 0.5 SOL. **Get demo funds** keeps 8 USDC back for bot orders, but starting an event can use the whole
+pool. Funding requests are capped per call but not rate-limited per IP. If booking auto-settle fails, the event is still
+created and returned without a task, and it settles with the manual button.
 
 ## What the program guarantees
 
